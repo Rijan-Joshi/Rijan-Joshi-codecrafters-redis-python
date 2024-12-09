@@ -5,10 +5,15 @@ def main():
     print("Logs from your program will appear here!")
 
     # Uncomment this to pass the first stage
-    #
     server_socket = socket.create_server(("localhost", 6379))
-    server_socket.accept()
-    print("Connection Established Successfully.")
+    connection, address = server_socket.accept()
+    
+    data = connection.recv(1024)
+
+    if data.decode() == 'PING':
+        connection.sendall(b"+PONG\r\n")
+
+    
 
 if __name__ == "__main__":
     main()
