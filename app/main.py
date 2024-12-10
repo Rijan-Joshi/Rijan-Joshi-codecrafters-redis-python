@@ -6,9 +6,10 @@ def main():
 
     # Uncomment this to pass the first stage
     server_socket = socket.create_server(("localhost", 6379))
-    connection, _ = server_socket.accept()
+    connection, address = server_socket.accept()
     connection.sendall(b"+PONG\r\n")
 
+    
 
 if __name__ == "__main__":
     main()
