@@ -4,8 +4,8 @@
 import asyncio
 
 async def handle_client(reader, writer):
-    client_address = writer.get_extra_info("peername");
-    print("Received client from address: ", client_address)
+    address = writer.get_extra_info('peername')
+    print('Connected to new address: ', address)
 
     while True:
         data = await reader.read(1024)
@@ -13,26 +13,30 @@ async def handle_client(reader, writer):
         if not data:
             break
 
-        if data.decode().strip() == 'PING':
-            response = "+PONG\r\n"
+        commands = data.decode().upper().strip().split()
+
+        if commands[0] == 'PING' and len(commands) == 1:
+            response = b"+PONG\r\n"
+        elif commands[0] == 'ECHO' and len(commands) == 2:
+            response = commands[1].encode()
         else:
-            response = "-ERR Unknown Command\r\n"
-
-        writer.write(response.encode())
-        await writer.drain()
+            response = b"-ERR Unknown Command \r\n"
+        
+        writer.write(response)
+        await writer.drain() #Ensure the message is sent
+    
     writer.close()
-    await writer.wait_closed()
+    await writer.wait_closed() #Wait untit the connection is closed
 
-async def run_client():
+async def main():
     server = await asyncio.start_server(handle_client, "localhost", 6379)
-    print("Server is runnin on port 6379... ")
-
+    print("Server is runnin on port 6379...")
     async with server:
         await server.serve_forever()
 
-if __name__ == "__main__":
-    asyncio.run(run_client())
 
+if __name__ == "__main__":
+    asyncio.run(main())
 
 #               Using Thread Method
 # __________________________________________________
