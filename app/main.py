@@ -2,6 +2,7 @@
 # __________________________________________________
 
 import asyncio
+import re
 
 async def handle_client(reader, writer):
     address = writer.get_extra_info('peername')
@@ -13,16 +14,28 @@ async def handle_client(reader, writer):
         if not data:
             break
 
-        commands = data.decode().upper().strip().split()
+        command = data.decode()
 
-        if commands[0] == 'PING' and len(commands) == 1:
-            response = b"+PONG\r\n"
-        elif commands[0] == 'ECHO' and len(commands) == 2:
-            response = commands[1].encode()
-        else:
-            response = b"-ERR Unknown Command \r\n"
-        
-        writer.write(response)
+        pattern = r'\*(\d+)\r\n((?:\$\d+\r\n[^\r\n]+\r\n)+)'
+
+        match = re.match(pattern, command)
+
+        if match:
+            args_string = match.group(2)
+
+            args_pattern = r'\$(\d+)\r\n([^\r\n]+)\r\n'
+
+            args = re.findall(args_pattern, args_string)
+            arguments = [arg[1] for arg in args]
+
+            if arguments[0].upper().strip() == 'PING' and len(arguments) == 1:
+                response = '+PONG\r\n'
+            elif arguments[0].upper().strip() == 'ECHO' and len(arguments) == 2:
+                response = arguments[1].strip()
+            else:
+                response = '+ERR Unknown Command \r\n'
+
+        writer.write(response.encode())
         await writer.drain() #Ensure the message is sent
     
     writer.close()

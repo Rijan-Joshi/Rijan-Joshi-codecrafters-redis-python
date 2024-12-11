@@ -5,7 +5,7 @@ def main():
     with socket.create_connection(('localhost',  6379)) as client_socket:
         
         print("Connected to the Server")
-        client_socket.sendall(b"ECHO HEY")
+        client_socket.sendall(b"*2\r\n$4\r\nECHO\r\n$5\r\napple\r\n")
 
         response = client_socket.recv(1024)
         
