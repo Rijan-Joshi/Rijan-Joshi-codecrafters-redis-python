@@ -9,7 +9,7 @@ def main():
 
         response = client_socket.recv(1024)
         
-        print("Received from Server to Client2: ", response.decode())
+        print("Received from Server to Client2: ", response)
 
 if __name__ == '__main__':
     main()

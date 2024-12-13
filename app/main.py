@@ -15,14 +15,17 @@ async def handle_client(reader, writer):
             break
 
         command = data.decode()
-
+        
+        #Pattern for RESP command
         pattern = r'\*(\d+)\r\n((?:\$\d+\r\n[^\r\n]+\r\n)+)'
 
         match = re.match(pattern, command)
 
         if match:
+            #Capture the RESP Bulk String
             args_string = match.group(2)
 
+            #Pattern for RESP Bulk String
             args_pattern = r'\$(\d+)\r\n([^\r\n]+)\r\n'
 
             args = re.findall(args_pattern, args_string)
@@ -31,11 +34,13 @@ async def handle_client(reader, writer):
             if arguments[0].upper().strip() == 'PING' and len(arguments) == 1:
                 response = '+PONG\r\n'
             elif arguments[0].upper().strip() == 'ECHO' and len(arguments) == 2:
-                response = arguments[1].strip()
+                response = f"${len(arguments[1])}\r\n{arguments[1]}\r\n"
             else:
-                response = '+ERR Unknown Command \r\n'
+                response = '-ERR Unknown Command \r\n'
+        else:
+            response = '-ERR Malformed Request\r\n'
 
-        writer.write(response.encode())
+        writer.write(response.encode()) 
         await writer.drain() #Ensure the message is sent
     
     writer.close()
