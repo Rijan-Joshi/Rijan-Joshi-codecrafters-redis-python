@@ -10,6 +10,7 @@ async def handle_client(reader, writer):
     print("Connection established with the client address: ", address)
     buffer = b""
 
+    record = {}
     while True:
         data = await reader.read(1024)
 
@@ -18,13 +19,16 @@ async def handle_client(reader, writer):
 
         buffer += data
 
+     
         while b"\r\n" in buffer:
             line_end = buffer.find(b"\r\n")
             line = buffer[:line_end].decode()
+            print(f"Buffer: {buffer} Line: {line}")
             buffer = buffer[line_end + 2:]
 
             if line.startswith('*'):
                 args_length = int(line[1:])
+                print(f"Length: {args_length}")
                 args = []
                 for _ in range(args_length):
                     if buffer.startswith(b"$"):
@@ -34,19 +38,39 @@ async def handle_client(reader, writer):
                         arg = buffer[:bulk_length].decode()
                         buffer = buffer[bulk_length+2:]
                         args.append(arg)
-
+                
+                print(f"Arguments: {args}")
                 if args[0].upper() == 'PING':
-                    response = '+PING\r\n'
+                    response = '+PONG\r\n'
                 elif args[0].upper() == 'ECHO' and len(args) > 1:
                     response = f"${len(args[1])}\r\n{args[1]}\r\n"
+                elif args[0].upper() == 'SET':
+                    if len(args) < 2:
+                        response = "-ERR Insufficient arguments in command"
+                    else:
+                        record[args[1]] = args[2]
+                        print(record)
+                        response = "+OK\r\n"
+                elif args[0].upper() == 'GET':
+                    if len(args)<2:
+                        response = '$-1\r\n'
+                    else:
+                        print("Argument: ", args[1])
+                        print(record[args[1]])
+                        print(args[1] in record)
+                        if args[1] in record: 
+                            response = f"${len(record[args[1]])}\r\n{record[args[1]]}\r\n"
+                        else:
+                            response = '$-1\r\n'
+                        print("Response from GET: ", response.encode())
                 else:
                     response = "-ERR Unknown Command\r\n"
                 
                 writer.write(response.encode())
                 await writer.drain()
-        
-        writer.close()
-        await writer.wait_closed()
+            
+    writer.close()
+    await writer.wait_closed()
 
 
 async def main():
