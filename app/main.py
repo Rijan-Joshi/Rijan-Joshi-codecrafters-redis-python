@@ -3,6 +3,7 @@
 # ___________________________________________________________________________________________
 
 import asyncio
+import time
 
 record = {}
 
@@ -57,10 +58,25 @@ def handle_command(args):
     elif args[0].upper() == 'ECHO' and len(args) > 1:
         response = f"${len(args[1])}\r\n{args[1]}\r\n"
     elif args[0].upper() == 'SET':
-        if len(args) < 2:
+        if len(args) < 3:
             response = "-ERR Insufficient arguments in command"
+            return response
         else:
-            record[args[1]] = args[2]
+            key = args[1]
+            value = args[2]
+            expiry = None
+
+            if len(args) > 3 and args[3].upper() == 'PX' and args[4]:
+                #Check if the expiry time is in proper format
+                try:
+                    #Find the expiry time for key   
+                    expiry = time.time()*1000 + int(args[4])
+                except ValueError:
+                    response = '-ERR Invalid expiration value'
+                    return response
+                print(f"Expiry: {expiry}")
+                
+            record[key] = (value, expiry)
             print(record)
             response = "+OK\r\n"
     elif args[0].upper() == 'GET':
@@ -70,8 +86,16 @@ def handle_command(args):
             print("Argument: ", args[1])
             print(record[args[1]])
             print(args[1] in record)
-            if args[1] in record: 
-                response = f"${len(record[args[1]])}\r\n{record[args[1]]}\r\n"
+            key = args[1]
+            if key in record: 
+                expiry = record[key][1] 
+                print(f"Expiry time: {expiry}")
+                #Check if expiry is set or the key has been expired or 
+                if expiry and time.time()*1000 > expiry:
+                    del record[key]
+                    response = f"$-1\r\n"
+                else:
+                    response = f"${len(record[key][0])}\r\n{record[key][0]}\r\n"
             else:
                 response = '$-1\r\n'
             print("Response from GET: ", response.encode())
@@ -80,8 +104,6 @@ def handle_command(args):
     
     return response
     
-
-
 async def main():
     server = await asyncio.start_server(handle_client, "localhost", 6379)
     
@@ -92,6 +114,45 @@ async def main():
     
 if __name__ == "__main__":
     asyncio.run(main())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #               Using Event Loop (Using regex expression)
@@ -185,8 +246,5 @@ if __name__ == "__main__":
 #         thread = threading.Thread(target=handle_client, args=(connection, address))
 #         thread.start()
 
-   
-    
-
 # if __name__ == "__main__":
-#     main()
+    main()
