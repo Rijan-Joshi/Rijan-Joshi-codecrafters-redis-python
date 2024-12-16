@@ -1,16 +1,17 @@
 
 #           Using Event Loop (Using Buffer-Based Incremental Parsing Method)
-
-#____________________________________________________________________________________________
+# ___________________________________________________________________________________________
 
 import asyncio
+
+record = {}
 
 async def handle_client(reader, writer):
     address = writer.get_extra_info("peername")
     print("Connection established with the client address: ", address)
     buffer = b""
 
-    record = {}
+
     while True:
         data = await reader.read(1024)
 
@@ -40,37 +41,45 @@ async def handle_client(reader, writer):
                         args.append(arg)
                 
                 print(f"Arguments: {args}")
-                if args[0].upper() == 'PING':
-                    response = '+PONG\r\n'
-                elif args[0].upper() == 'ECHO' and len(args) > 1:
-                    response = f"${len(args[1])}\r\n{args[1]}\r\n"
-                elif args[0].upper() == 'SET':
-                    if len(args) < 2:
-                        response = "-ERR Insufficient arguments in command"
-                    else:
-                        record[args[1]] = args[2]
-                        print(record)
-                        response = "+OK\r\n"
-                elif args[0].upper() == 'GET':
-                    if len(args)<2:
-                        response = '$-1\r\n'
-                    else:
-                        print("Argument: ", args[1])
-                        print(record[args[1]])
-                        print(args[1] in record)
-                        if args[1] in record: 
-                            response = f"${len(record[args[1]])}\r\n{record[args[1]]}\r\n"
-                        else:
-                            response = '$-1\r\n'
-                        print("Response from GET: ", response.encode())
-                else:
-                    response = "-ERR Unknown Command\r\n"
-                
+
+                response = handle_command(args)
+
                 writer.write(response.encode())
                 await writer.drain()
             
     writer.close()
     await writer.wait_closed()
+
+
+def handle_command(args):
+    if args[0].upper() == 'PING':
+        response = '+PONG\r\n'
+    elif args[0].upper() == 'ECHO' and len(args) > 1:
+        response = f"${len(args[1])}\r\n{args[1]}\r\n"
+    elif args[0].upper() == 'SET':
+        if len(args) < 2:
+            response = "-ERR Insufficient arguments in command"
+        else:
+            record[args[1]] = args[2]
+            print(record)
+            response = "+OK\r\n"
+    elif args[0].upper() == 'GET':
+        if len(args)<2:
+            response = '$-1\r\n'
+        else:
+            print("Argument: ", args[1])
+            print(record[args[1]])
+            print(args[1] in record)
+            if args[1] in record: 
+                response = f"${len(record[args[1]])}\r\n{record[args[1]]}\r\n"
+            else:
+                response = '$-1\r\n'
+            print("Response from GET: ", response.encode())
+    else:
+        response = "-ERR Unknown Command\r\n"
+    
+    return response
+    
 
 
 async def main():
