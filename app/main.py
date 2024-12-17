@@ -3,9 +3,16 @@
 # ___________________________________________________________________________________________
 
 import asyncio
+import sys
 import time
 
 record = {}
+
+config = {
+    "dir": "/tmp",
+    "dbfilename": "dump.rdb"
+}
+
 
 async def handle_client(reader, writer):
     address = writer.get_extra_info("peername")
@@ -99,12 +106,28 @@ def handle_command(args):
             else:
                 response = '$-1\r\n'
             print("Response from GET: ", response.encode())
+    elif args[0].upper() == 'CONFIG':
+        if len(args) < 2:
+            response = '-ERR Insufficient arguments in command\r\n'
+        else:
+            if args[1].upper() == 'GET':
+                param = args[2]
+                if param in config:
+                    value = config[param]
+                    response = f"*2\r\n${len(param)}\r\n{param}\r\n${len(value)}\r\n{value}\r\n"
+                else:
+                    response = f"*0\r\n"
     else:
         response = "-ERR Unknown Command\r\n"
     
     return response
     
 async def main():
+    if '--dir' in sys.argv:
+        config['dir'] = sys.argv[sys.argv.index('--dir') + 1]
+    if '--dbfilename' in sys.argv:
+        config['dbfilename'] = sys.argv[sys.argv.index('--dbfilename') + 1]
+
     server = await asyncio.start_server(handle_client, "localhost", 6379)
     
     print("Server is runnning on server 6379...")
