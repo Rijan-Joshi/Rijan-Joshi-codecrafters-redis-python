@@ -5,6 +5,8 @@
 import asyncio
 import sys
 import time
+import struct
+import os
 
 record = {}
 
@@ -13,6 +15,13 @@ config = {
     "dbfilename": "dump.rdb"
 }
 
+global temp_keys
+temp_keys = []
+
+#Take the tester's input i.e. dir and filename 
+#if doesn't exist, treat the database as empty i.e. return error
+#if they exist, load the data from the file and keep the record of the keys and values
+#Then, implement the KEYS command to return all the keys in the database
 
 async def handle_client(reader, writer):
     address = writer.get_extra_info("peername")
@@ -59,6 +68,92 @@ async def handle_client(reader, writer):
     await writer.wait_closed()
 
 
+def read_length(f) -> int:
+    byte = f.read(1)
+
+    first_byte = byte[0]
+
+    if first_byte < 0xC0:
+        return first_byte
+    elif first_byte == 0xC0:
+        next_byte = f.read(1)
+        return struct.unpack("B", next_byte)[0]
+    elif first_byte == 0xC1:
+        next_bytes = f.read(2)
+        return struct.unpack("<H", next_bytes)[0]
+    elif first_byte == 0xC2:
+        next_bytes = f.read(4)
+        return struct.unpack('<I', next_bytes)[0]
+
+def read_string(f) -> str:
+    length = read_length(f)
+    data = f.read(length)
+    return data.decode('utf-8')
+
+
+def load_rdb(filename: str) -> None:
+    """Load data from rdb file"""
+
+    """Check for headers, database, and end of file"""
+    
+
+    with open(filename, "rb") as f:
+        magic = f.read(5)
+        if magic != b"REDIS":
+            raise ValueError("Invalid RDB file")
+        
+        version = f.read(4)
+        key = value = ""
+        while True:
+
+            type_byte = f.read(1)
+            print("Type Byte: ", type_byte)
+
+            if not type_byte:
+                break
+            
+            opcode = type_byte[0]
+
+            expiry = None
+            if opcode == 0xFF:
+                break
+            # elif opcode == 0xFA:
+            #     name = read_string(f)
+            #     value = read_string(f)
+            #     print("Name: ", name)
+            #     print("Value: ", value)
+            #     print("Metadata Passed succesfully")
+            #     continue
+            elif opcode == 0xFE:
+                f.read(1)
+                print("Database NUMBER passed successfully")
+                continue
+            
+            if opcode == 0xFB:
+                f.read(2)
+                print("Database hash size passed successfully")
+                type_byte = f.read(1)
+                opcode = type_byte[0]
+                key = read_string(f)
+                value = read_string(f)
+            elif opcode == 0xFD:
+                expiry = struct.unpack("<I", f.read(4))[0] * 1000
+                type_byte = f.read(1)
+                opcode = type_byte[0]
+                key = read_string(f)
+                value = read_string(f)
+              
+    
+            elif opcode == 0xFC:
+                expiry = struct.unpack("<Q", f.read(8))[0] 
+                type_byte = f.read(1)
+                opcode = type_byte[0]
+                key = read_string(f)
+                value = read_string(f)
+                
+            if key and value and (expiry is None or expiry > time.time() * 1000):
+                temp_keys.append(key)
+            
 def handle_command(args):
     if args[0].upper() == 'PING':
         response = '+PONG\r\n'
@@ -105,7 +200,6 @@ def handle_command(args):
                     response = f"${len(record[key][0])}\r\n{record[key][0]}\r\n"
             else:
                 response = '$-1\r\n'
-            print("Response from GET: ", response.encode())
     elif args[0].upper() == 'CONFIG':
         if len(args) < 2:
             response = '-ERR Insufficient arguments in command\r\n'
@@ -117,6 +211,23 @@ def handle_command(args):
                     response = f"*2\r\n${len(param)}\r\n{param}\r\n${len(value)}\r\n{value}\r\n"
                 else:
                     response = f"*0\r\n"
+    elif args[0].upper() == 'KEYS':
+        if len(args) < 2:
+            response = '-ERR Insufficient arguments in command\r\n'
+        else:
+            if config['dir'] and config['dbfilename']:
+                 rdb_path = f"{config['dir']}/{config['dbfilename']}"
+                 if os.path.exists(rdb_path):
+                    load_rdb(rdb_path)
+            else:
+                response = "$-1\r\n"
+            response = f""
+            if args[1] == '*':
+                keys = temp_keys
+                print("Temp_Keys: ", keys)
+                response += f"*{len(keys)}\r\n"
+                response += "\r\n".join([f"${len(key)}\r\n{key}" for key in keys])
+                response += "\r\n"
     else:
         response = "-ERR Unknown Command\r\n"
     
@@ -127,6 +238,7 @@ async def main():
         config['dir'] = sys.argv[sys.argv.index('--dir') + 1]
     if '--dbfilename' in sys.argv:
         config['dbfilename'] = sys.argv[sys.argv.index('--dbfilename') + 1]
+
 
     server = await asyncio.start_server(handle_client, "localhost", 6379)
     
