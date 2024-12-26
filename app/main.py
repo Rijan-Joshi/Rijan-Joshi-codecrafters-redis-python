@@ -129,27 +129,28 @@ def load_rdb(filename: str) -> None:
             if opcode == 0xFB:
                 f.read(2)
                 print("Database hash size passed successfully")
-                type_byte = f.read(1)
-                opcode = type_byte[0]
-                key = read_string(f)
-                value = read_string(f)
-            elif opcode == 0xFD:
-                expiry = struct.unpack("<I", f.read(4))[0] * 1000
-                type_byte = f.read(1)
-                opcode = type_byte[0]
-                key = read_string(f)
-                value = read_string(f)
-              
-    
-            elif opcode == 0xFC:
-                expiry = struct.unpack("<Q", f.read(8))[0] 
-                type_byte = f.read(1)
-                opcode = type_byte[0]
-                key = read_string(f)
-                value = read_string(f)
                 
-            if key and value and (expiry is None or expiry > time.time() * 1000):
-                record[key] = (value, expiry)
+                while True:
+                    type_byte = f.read(1)
+                    opcode = type_byte[0]
+
+                    if opcode == 0xFF:
+                        return
+                    
+                    if opcode == 0xFD:
+                        expiry = struct.unpack("<I", f.read(4))[0] * 1000
+                        continue
+                        
+                    if opcode == 0xFC:
+                        expiry = struct.unpack("<Q", f.read(8))[0] 
+                        continue
+                        
+                    key = read_string(f)
+                    value = read_string(f)
+
+                    if key and value and (expiry is None or expiry > time.time() * 1000):
+                        record[key] = (value, expiry)
+
             
 def handle_command(args):
     if args[0].upper() == 'PING':
@@ -215,10 +216,12 @@ def handle_command(args):
             response = f""
             if args[1] == '*':
                 keys = record.keys()
+                print("Record: ", record)
                 print("Temp_Keys: ", keys)
                 response += f"*{len(keys)}\r\n"
                 response += "\r\n".join([f"${len(key)}\r\n{key}" for key in keys])
                 response += "\r\n"
+                print("Response: ", response)
     else:
         response = "-ERR Unknown Command\r\n"
     
