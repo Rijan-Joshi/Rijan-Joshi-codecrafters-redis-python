@@ -184,7 +184,7 @@ def handle_command(args):
             response = '$-1\r\n'
         else:
             print("Argument: ", args[1])
-            print(record[args[1]])
+            print("Record: ", record)
             print(args[1] in record)
             key = args[1]
             if key in record: 
