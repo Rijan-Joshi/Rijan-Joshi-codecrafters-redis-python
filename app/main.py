@@ -15,9 +15,6 @@ config = {
     "dbfilename": "dump.rdb"
 }
 
-global temp_keys
-temp_keys = []
-
 #Take the tester's input i.e. dir and filename 
 #if doesn't exist, treat the database as empty i.e. return error
 #if they exist, load the data from the file and keep the record of the keys and values
@@ -152,7 +149,7 @@ def load_rdb(filename: str) -> None:
                 value = read_string(f)
                 
             if key and value and (expiry is None or expiry > time.time() * 1000):
-                temp_keys.append(key)
+                record[key] = (value, expiry)
             
 def handle_command(args):
     if args[0].upper() == 'PING':
@@ -215,15 +212,9 @@ def handle_command(args):
         if len(args) < 2:
             response = '-ERR Insufficient arguments in command\r\n'
         else:
-            if config['dir'] and config['dbfilename']:
-                 rdb_path = f"{config['dir']}/{config['dbfilename']}"
-                 if os.path.exists(rdb_path):
-                    load_rdb(rdb_path)
-            else:
-                response = "$-1\r\n"
             response = f""
             if args[1] == '*':
-                keys = temp_keys
+                keys = record.keys()
                 print("Temp_Keys: ", keys)
                 response += f"*{len(keys)}\r\n"
                 response += "\r\n".join([f"${len(key)}\r\n{key}" for key in keys])
@@ -239,6 +230,10 @@ async def main():
     if '--dbfilename' in sys.argv:
         config['dbfilename'] = sys.argv[sys.argv.index('--dbfilename') + 1]
 
+    if config['dir'] and config['dbfilename']:
+        rdb_path = f"{config['dir']}/{config['dbfilename']}"
+        if os.path.exists(rdb_path):
+            load_rdb(rdb_path)
 
     server = await asyncio.start_server(handle_client, "localhost", 6379)
     
