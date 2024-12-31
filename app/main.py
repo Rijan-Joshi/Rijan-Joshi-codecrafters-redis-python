@@ -17,7 +17,7 @@ def setup_logging():
     )
 
 
-"""Main Function of the Redis Server"""
+"""Main Function of the Redis Server Implementation"""
 
 
 def main():

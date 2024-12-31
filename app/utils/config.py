@@ -29,5 +29,12 @@ class RedisServerConfig:
         parser.add_argument(
             "--dbfilename", help="Filename of RDB file", default=config.dbfilename
         )
+        parser.add_argument(
+            "--port", help="Port Number for Custom Redis Server", default=config.port
+        )
         parsed_args = parser.parse_args(args)
-        return config(dir=parsed_args.dir, dbfilename=parsed_args.dbfilename)
+        return config(
+            dir=parsed_args.dir,
+            dbfilename=parsed_args.dbfilename,
+            port=parsed_args.port,
+        )
