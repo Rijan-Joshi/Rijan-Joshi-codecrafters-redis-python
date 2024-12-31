@@ -11,11 +11,6 @@ record = {}
 
 config = {"dir": "/tmp", "dbfilename": "dump.rdb"}
 
-# Take the tester's input i.e. dir and filename
-# if doesn't exist, treat the database as empty i.e. return error
-# if they exist, load the data from the file and keep the record of the keys and values
-# Then, implement the KEYS command to return all the keys in the database
-
 
 async def handle_client(reader, writer):
     address = writer.get_extra_info("peername")
