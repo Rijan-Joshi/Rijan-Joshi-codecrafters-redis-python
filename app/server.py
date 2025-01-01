@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class RedisServer:
     def __init__(self, config: "RedisServerConfig"):
         self.config = config
-        self.database = DataStore()
+        self.database = DataStore(self.config)
         self.command_handler = CommandHandler(self.database, config)
         self.server: Optional[asyncio.AbstractServer] = None
         self.resp_decoder = RESPDecoder()

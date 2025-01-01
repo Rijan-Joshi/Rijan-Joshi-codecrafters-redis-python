@@ -12,6 +12,7 @@ class RedisServerConfig:
     port: int = 6379
     dir: str = "/tmp"
     dbfilename: str = "dump.rdb"
+    replicaof: str = None
 
     @property
     def rdb_path(self):
@@ -32,9 +33,16 @@ class RedisServerConfig:
         parser.add_argument(
             "--port", help="Port Number for Custom Redis Server", default=config.port
         )
+        parser.add_argument(
+            "--replicaof",
+            help="Replicate the data from the master",
+            default=config.replicaof,
+            required=False,
+        )
         parsed_args = parser.parse_args(args)
         return config(
             dir=parsed_args.dir,
             dbfilename=parsed_args.dbfilename,
             port=parsed_args.port,
+            replicaof=parsed_args.replicaof,
         )

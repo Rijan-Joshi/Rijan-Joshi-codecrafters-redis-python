@@ -3,12 +3,14 @@
 import time
 import logging
 from typing import Dict, Tuple, Optional
+from app.utils.config import RedisServerConfig
 
 logger = logging.getLogger(__name__)
 
 
 class DataStore:
-    def __init__(self):
+    def __init__(self, config: "RedisServerConfig"):
+        self.config = config
         self._data: Dict[str, Tuple[str, Optional[int]]] = {}
         self._replication_data = {"role": "master"}
 
@@ -43,6 +45,9 @@ class DataStore:
     def info(self) -> dict:
         """Return the replication Info"""
         line = ["# Replication"]
+
+        if self.config.replicaof is not None:
+            self._replication_data["role"] = "slave"
 
         line.append(f"role:{self._replication_data['role']}")
 
