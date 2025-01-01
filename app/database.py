@@ -1,5 +1,7 @@
 """Database for my REDIS"""
 
+import secrets
+import string
 import time
 import logging
 from typing import Dict, Tuple, Optional
@@ -17,10 +19,17 @@ class DataStore:
         self._data: Dict[str, Tuple[str, Optional[int]]] = {}
         self._replication_data = {
             "role": "master",
-            "master_replid": "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb",
+            "master_replid": self._generate_secure_random_string(),
             "master_repl_offset": 0,
         }
         self._update_replication_data()
+
+    def _generate_secure_random_string(self, length: int = 40) -> str:
+        characters = string.ascii_letters + string.digits
+        secure_random_string = "".join(
+            secrets.choice(characters) for _ in range(length)
+        )
+        return secure_random_string
 
     def _update_replication_data(self):
         if self.config.replicaof is not None:

@@ -7,7 +7,7 @@ from .connection import PINGCommand, ECHOCommand
 from app.protocol.resp_encoder import RESPEncoder
 from .strings import GETCommand, SETCommand, KEYSCommand, INFOCommand
 from .server import ConfigCommand
-from .replication import REPLCONFCommand
+from .replication import REPLCONFCommand, PSYNCCommand
 
 
 class CommandHandler:
@@ -28,6 +28,7 @@ class CommandHandler:
             "CONFIG": ConfigCommand,
             "INFO": INFOCommand,
             "REPLCONF": REPLCONFCommand,
+            "PSYNC": PSYNCCommand,
         }
 
     async def handle_command(self, args):
