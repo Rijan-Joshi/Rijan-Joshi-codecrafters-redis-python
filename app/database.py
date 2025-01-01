@@ -20,6 +20,11 @@ class DataStore:
             "master_replid": "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb",
             "master_repl_offset": 0,
         }
+        self._update_replication_data()
+
+    def _update_replication_data(self):
+        if self.config.replicaof is not None:
+            self._replication_data["role"] = "slave"
 
     def set(self, key: str, value: str, expiry: Optional[int] = None) -> None:
         """Set a key-value pair with optional expiry (in milliseconds)."""
@@ -52,9 +57,6 @@ class DataStore:
     def info(self) -> dict:
         """Return the replication Info"""
         line = ["# Replication"]
-
-        if self.config.replicaof is not None:
-            self._replication_data["role"] = "slave"
 
         for key, value in self._replication_data.items():
             line.append(f"{key}:{value}")

@@ -8,6 +8,8 @@ from app.protocol.resp_encoder import RESPEncoder
 from .strings import GETCommand, SETCommand, KEYSCommand, INFOCommand
 from .server import ConfigCommand
 
+# from .replication import REPLCONFCommand
+
 
 class CommandHandler:
     def __init__(self, db: "DataStore", config: "RedisServerConfig"):
@@ -26,6 +28,7 @@ class CommandHandler:
             "KEYS": KEYSCommand,
             "CONFIG": ConfigCommand,
             "INFO": INFOCommand,
+            # "REPLCONF": REPLCONFCommand,
         }
 
     async def handle_command(self, args):
@@ -37,6 +40,7 @@ class CommandHandler:
                 command_name = args[2].upper()
                 args = args[2:]
 
+        print("Arguments", args)
         command_class = self.commands.get(command_name)
         print("Command Class", command_class)
 
