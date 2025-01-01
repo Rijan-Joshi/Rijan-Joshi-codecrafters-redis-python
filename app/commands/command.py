@@ -5,7 +5,7 @@ from app.database import DataStore
 from app.utils.config import RedisServerConfig
 from .connection import PINGCommand, ECHOCommand
 from app.protocol.resp_encoder import RESPEncoder
-from .strings import GETCommand, SETCommand, KEYSCommand
+from .strings import GETCommand, SETCommand, KEYSCommand, INFOCommand
 from .server import ConfigCommand
 
 
@@ -25,11 +25,18 @@ class CommandHandler:
             "SET": SETCommand,
             "KEYS": KEYSCommand,
             "CONFIG": ConfigCommand,
+            "INFO": INFOCommand,
         }
 
     async def handle_command(self, args):
 
         command_name = args[0].upper()
+
+        if len(args) > 2:
+            if args[0] == "-p" and args[1]:
+                command_name = args[2].upper()
+                args = args[2:]
+
         command_class = self.commands.get(command_name)
         print("Command Class", command_class)
 

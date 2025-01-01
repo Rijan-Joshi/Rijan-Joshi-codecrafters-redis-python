@@ -47,7 +47,24 @@ class KEYSCommand(Command):
         self.db = db
 
     async def execute(self) -> bytes:
+        print("Ariguments in args", self.args)
+        print("Length of keys", self.db.keys())
         if len(self.args) < 2:
             return self.encoder.encode_error("Invalid Pattern")
         else:
             return self.encoder.encode_array(self.db.keys())
+
+
+# Command Support for REDIS Replication Feature
+
+
+class INFOCommand(Command):
+    def __init__(self, args, db: "DataStore", config):
+        super().__init__(args)
+        self.db = db
+
+    async def execute(self) -> bytes:
+        if len(self.args) < 2:
+            self.encoder.encode_error("INFO requires an argument")
+        else:
+            return self.encoder.encode_bulk_string(self.db.info())

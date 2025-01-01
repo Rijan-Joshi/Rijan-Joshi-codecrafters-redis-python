@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 class DataStore:
     def __init__(self):
         self._data: Dict[str, Tuple[str, Optional[int]]] = {}
+        self._replication_data = {"role": "master"}
 
     def set(self, key: str, value: str, expiry: Optional[int] = None) -> None:
         """Set a key-value pair with optional expiry (in milliseconds)."""
@@ -29,6 +30,7 @@ class DataStore:
 
         return value
 
+    @property
     def keys(self) -> list[str]:
         """Return all non-expired keys."""
         current_time = time.time() * 1000
@@ -38,3 +40,13 @@ class DataStore:
             if not expiry or expiry > current_time
         ]
         return valid_keys
+
+    @property
+    def info(self) -> dict:
+        """Return the replication Info"""
+        line = ["# Replication"]
+
+        line.append(f"role:{self._replication_data['role']}")
+
+        print("\n".join(line))
+        return "\n".join(line)

@@ -20,6 +20,7 @@ class RESPEncoder:
 
     @staticmethod
     def encode_array(items: List[str]) -> bytes:
+        print("Items in encode_array", items)
         if not items:
             return b"*0\r\n"
         response = f"*{len(items)}\r\n"
