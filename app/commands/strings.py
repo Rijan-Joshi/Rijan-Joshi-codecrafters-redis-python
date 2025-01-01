@@ -56,8 +56,6 @@ class KEYSCommand(Command):
 
 
 # Command Support for REDIS Replication Feature
-
-
 class INFOCommand(Command):
     def __init__(self, args, db: "DataStore", config):
         super().__init__(args)

@@ -4,6 +4,8 @@ import time
 import logging
 from typing import Dict, Tuple, Optional
 from app.utils.config import RedisServerConfig
+import asyncio
+from app.protocol.resp_encoder import RESPEncoder
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +13,7 @@ logger = logging.getLogger(__name__)
 class DataStore:
     def __init__(self, config: "RedisServerConfig"):
         self.config = config
+        self.encoder = RESPEncoder()
         self._data: Dict[str, Tuple[str, Optional[int]]] = {}
         self._replication_data = {
             "role": "master",

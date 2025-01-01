@@ -5,6 +5,7 @@ import logging
 import sys
 from app.utils.config import RedisServerConfig
 from app.server import RedisServer
+from app.replication.replica import RedisReplica
 
 """Logging Setup Configuration"""
 
@@ -27,6 +28,14 @@ def main():
     try:
         config = RedisServerConfig.parse_args(args=sys.argv[1:])
         print("Configuration", config)
+
+        if config.replicaof:
+            logger.info(
+                f"Replicating data from {config.replicaof['host']}:{config.replicaof['port']}"
+            )
+            Replica = RedisReplica(config)
+            asyncio.run(Replica.handle_replication())
+
         server = RedisServer(config)
         asyncio.run(server.start())
     except Exception as e:

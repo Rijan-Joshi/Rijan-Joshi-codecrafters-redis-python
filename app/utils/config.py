@@ -1,9 +1,11 @@
 from dataclasses import dataclass
 from pathlib import Path
 import argparse
-
+import logging
 
 """All configuration settings for REDIS"""
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -12,7 +14,7 @@ class RedisServerConfig:
     port: int = 6379
     dir: str = "/tmp"
     dbfilename: str = "dump.rdb"
-    replicaof: str = None
+    replicaof: dict = None
 
     @property
     def rdb_path(self):
@@ -36,13 +38,22 @@ class RedisServerConfig:
         parser.add_argument(
             "--replicaof",
             help="Replicate the data from the master",
-            default=config.replicaof,
             required=False,
         )
         parsed_args = parser.parse_args(args)
+
+        replicaof = None
+        if parsed_args.replicaof:
+            try:
+                host, port = parsed_args.replicaof.split()
+                replicaof = {"host": host, "port": int(port)}
+            except Exception as e:
+                logger.error(f"Error in parsing replicaof: {e}")
+                raise ValueError("--replicaof must be in the format 'host:port'")
+
         return config(
             dir=parsed_args.dir,
             dbfilename=parsed_args.dbfilename,
-            port=parsed_args.port,
-            replicaof=parsed_args.replicaof,
+            port=int(parsed_args.port),
+            replicaof=replicaof,
         )

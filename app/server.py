@@ -7,6 +7,8 @@ from app.commands.command import CommandHandler
 from app.protocol.RDBLoader import RDBLoader
 from app.protocol.resp_decoder import RESPDecoder
 from app.utils.config import RedisServerConfig
+from app.replication.replica import RedisReplica
+from app.protocol.resp_encoder import RESPEncoder
 
 """Redis Server"""
 # Database
@@ -25,6 +27,7 @@ class RedisServer:
         self.command_handler = CommandHandler(self.database, config)
         self.server: Optional[asyncio.AbstractServer] = None
         self.resp_decoder = RESPDecoder()
+        self.encoder = RESPEncoder()
 
     async def start(self):
 
