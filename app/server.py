@@ -79,8 +79,14 @@ class RedisServer:
                     print("Command Arguments", command_args)
                     response = await self.command_handler.handle_command(command_args)
                     print("This is response", response)
-                    writer.write(response)
-                    await writer.drain()
+
+                    if isinstance(response, list):
+                        for resp in response:
+                            writer.write(resp)
+                            await writer.drain()
+                    else:
+                        writer.write(response)
+                        await writer.drain()
             except asyncio.TimeoutError:
                 logger.error(f"Timeout while reading from Peer: {address}")
         except ConnectionError as e:

@@ -18,7 +18,14 @@ class PSYNCCommand(Command):
         super().__init__(args)
         self.db = db
 
+    def _resynchronize(self):
+        content = bytes.fromhex(self.db._dummy_empty_rdb)
+        return f"${len(content)}\r\n".encode() + content
+
     async def execute(self):
-        return self.encoder.encode_simple_string(
+        response = self.encoder.encode_simple_string(
             f"FULLRESYNC {self.db._replication_data.get("master_replid")} {self.db._replication_data.get("master_repl_offset")}"
         )
+        rdb_content = self._resynchronize()
+
+        return [response, rdb_content]

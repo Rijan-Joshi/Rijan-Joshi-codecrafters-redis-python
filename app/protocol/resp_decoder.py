@@ -15,7 +15,7 @@ class RESPDecoder:
 
         try:
             while True:
-                data = await reader.read(1024)
+                data = await reader.read(4096)
 
                 print("Data", data.decode())
                 if not data:
