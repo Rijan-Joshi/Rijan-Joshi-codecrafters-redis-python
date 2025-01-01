@@ -1,6 +1,9 @@
 import asyncio
+import logging
 from app.utils.config import RedisServerConfig
 from app.protocol.resp_encoder import RESPEncoder
+
+logger = logging.getLogger(__name__)
 
 
 class RedisReplica:
@@ -16,14 +19,25 @@ class RedisReplica:
         )
 
     async def handle_replication(self):
+        try:
+            # Connect to master server
+            await self.connect()
 
-        # Connect to master server
-        await self.connect()
+            # Send handshake
+            await self.send_handshake(["PING"])
+            await self.send_handshake(
+                ["REPLCONF", "listening-port", str(self.config.port)]
+            )
+            await self.send_handshake(["REPLCONF", "capa", "psync2"])
+            await self.send_handshake(["PSYNC", "?", "-1"])
 
-        # Send handshake
-        await self.send_handshake(["PING"])
-        await self.send_handshake(["REPLCONF", "listening-port", str(self.config.port)])
-        await self.send_handshake(["REPLCONF", "capa", "psync2"])
+        except Exception as e:
+            logger.error(f"Error during replication: {e}")
+        finally:
+            if self.writer:
+                self.writer.close()
+                await self.writer.wait_closed()
+                logger.info("Connection closed")
 
     async def send_handshake(self, command):
         # Send Handshake
