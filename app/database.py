@@ -30,7 +30,6 @@ class DataStore:
 
         return value
 
-    @property
     def keys(self) -> list[str]:
         """Return all non-expired keys."""
         current_time = time.time() * 1000
@@ -41,12 +40,10 @@ class DataStore:
         ]
         return valid_keys
 
-    @property
     def info(self) -> dict:
         """Return the replication Info"""
         line = ["# Replication"]
 
         line.append(f"role:{self._replication_data['role']}")
 
-        print("\n".join(line))
         return "\n".join(line)
