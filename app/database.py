@@ -17,6 +17,7 @@ class DataStore:
         self.config = config
         self.encoder = RESPEncoder()
         self._data: Dict[str, Tuple[str, Optional[int]]] = {}
+        self.replicas = set()
         self._replication_data = {
             "role": "master",
             "master_replid": self._generate_secure_random_string(),

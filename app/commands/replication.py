@@ -1,3 +1,4 @@
+import asyncio
 from .base import Command
 from app.utils.config import RedisServerConfig
 from app.database import DataStore
@@ -14,12 +15,14 @@ class REPLCONFCommand(Command):
 
 
 class PSYNCCommand(Command):
-    def __init__(self, args, db: "DataStore", config):
+    def __init__(self, args, db: "DataStore", config, writer: asyncio.StreamWriter):
         super().__init__(args)
         self.db = db
+        self.writer = writer
 
     def _resynchronize(self):
         content = bytes.fromhex(self.db._dummy_empty_rdb)
+
         return f"${len(content)}\r\n".encode() + content
 
     async def execute(self):
@@ -27,5 +30,7 @@ class PSYNCCommand(Command):
             f"FULLRESYNC {self.db._replication_data.get("master_replid")} {self.db._replication_data.get("master_repl_offset")}"
         )
         rdb_content = self._resynchronize()
+
+        self.db.replicas.add(self.writer)
 
         return [response, rdb_content]

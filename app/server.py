@@ -24,10 +24,10 @@ class RedisServer:
     def __init__(self, config: "RedisServerConfig"):
         self.config = config
         self.database = DataStore(self.config)
-        self.command_handler = CommandHandler(self.database, config)
         self.server: Optional[asyncio.AbstractServer] = None
         self.resp_decoder = RESPDecoder()
         self.encoder = RESPEncoder()
+        self.command_handler = CommandHandler(self.database, config)
 
     async def start(self):
 
@@ -74,19 +74,23 @@ class RedisServer:
             try:
                 while True:
                     command_args = await self.resp_decoder.decode(reader)
+
                     if not command_args:
                         break
-                    print("Command Arguments", command_args)
-                    response = await self.command_handler.handle_command(command_args)
-                    print("This is response", response)
+
+                    response = await self.command_handler.handle_command(
+                        command_args, writer
+                    )
 
                     if isinstance(response, list):
                         for resp in response:
                             writer.write(resp)
                             await writer.drain()
+
                     else:
                         writer.write(response)
                         await writer.drain()
+
             except asyncio.TimeoutError:
                 logger.error(f"Timeout while reading from Peer: {address}")
         except ConnectionError as e:
@@ -94,6 +98,8 @@ class RedisServer:
         except Exception as e:
             logger.error(f"Error: {e}")
         finally:
+            # Close the connection
+            self.database.replicas.remove(writer)
             writer.close()
             await writer.wait_closed()
             logger.info(f"Connection Closed from Peer: {address}")

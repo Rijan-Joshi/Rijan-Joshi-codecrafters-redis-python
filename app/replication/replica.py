@@ -59,8 +59,8 @@ class RedisReplica:
         try:
             # Encode and send command
             encoded_command = self.encoder.encode_array(command)
-            print(f"Sending command: {command}")
-            print(f"Encoded command: {encoded_command}")
+            logger.info(f"Sending command: {command}")
+            logger.info(f"Encoded command: {encoded_command}")
 
             self.writer.write(encoded_command)
             await self.writer.drain()

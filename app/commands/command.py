@@ -31,7 +31,7 @@ class CommandHandler:
             "PSYNC": PSYNCCommand,
         }
 
-    async def handle_command(self, args):
+    async def handle_command(self, args, writer=None):
 
         command_name = args[0].upper()
 
@@ -48,5 +48,8 @@ class CommandHandler:
             logging.error(f"Command not found: {command_name}")
             return self.encoder.encode_error(f"Command not found: {command_name}")
 
-        command = command_class(args, self.db, self.config)
+        if command_name in ["PSYNC"]:
+            command = command_class(args, self.db, self.config, writer)
+        else:
+            command = command_class(args, self.db, self.config)
         return await command.execute()
