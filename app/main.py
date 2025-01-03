@@ -35,9 +35,9 @@ def main():
             )
             Replica = RedisReplica(config)
             asyncio.run(Replica.handle_replication())
-
-        server = RedisServer(config)
-        asyncio.run(server.start())
+        else:
+            server = RedisServer(config)
+            asyncio.run(server.start())
     except Exception as e:
         logger.error(f"Error: {e}")
         sys.exit(1)

@@ -29,8 +29,14 @@ class PSYNCCommand(Command):
         response = self.encoder.encode_simple_string(
             f"FULLRESYNC {self.db._replication_data.get("master_replid")} {self.db._replication_data.get("master_repl_offset")}"
         )
+
+        self.writer.write(response)
+        await self.writer.drain()
         rdb_content = self._resynchronize()
+
+        self.writer.write(rdb_content)
+        await self.writer.drain()
 
         self.db.replicas.add(self.writer)
 
-        return [response, rdb_content]
+        return None

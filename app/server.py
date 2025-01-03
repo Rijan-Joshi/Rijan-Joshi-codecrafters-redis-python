@@ -7,7 +7,6 @@ from app.commands.command import CommandHandler
 from app.protocol.RDBLoader import RDBLoader
 from app.protocol.resp_decoder import RESPDecoder
 from app.utils.config import RedisServerConfig
-from app.replication.replica import RedisReplica
 from app.protocol.resp_encoder import RESPEncoder
 
 """Redis Server"""
@@ -21,13 +20,16 @@ logger = logging.getLogger(__name__)
 
 
 class RedisServer:
-    def __init__(self, config: "RedisServerConfig"):
+    def __init__(
+        self, config: "RedisServerConfig", database: Optional[DataStore] = None
+    ):
         self.config = config
-        self.database = DataStore(self.config)
+        self.database = DataStore(self.config) if database is None else database
         self.server: Optional[asyncio.AbstractServer] = None
         self.resp_decoder = RESPDecoder()
         self.encoder = RESPEncoder()
         self.command_handler = CommandHandler(self.database, config)
+        self._asyncio_queue = asyncio.Queue()
 
     async def start(self):
 
@@ -46,7 +48,7 @@ class RedisServer:
 
         # Signal Setup
         for sig in (signal.SIGTERM, signal.SIGINT):
-            asyncio.get_event_loop().add_signal_handler(
+            asyncio.get_running_loop().add_signal_handler(
                 sig, lambda s=sig: asyncio.create_task(self.shutdown(s))
             )
 
@@ -59,6 +61,18 @@ class RedisServer:
         if self.server:
             self.server.close()
             await self.server.wait_closed()
+
+        if self.database.replicas:
+            for replica in self.database.replicas:
+                try:
+                    replica.close()
+                    await replica.wait_closed()
+                except Exception as e:
+                    logger.warning(f"Failed to close replica: {e}")
+
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        [task.cancel() for task in tasks]
+        await asyncio.gather(*tasks, return_exceptions=True)
 
         asyncio.get_event_loop().stop()
 
@@ -73,23 +87,28 @@ class RedisServer:
         try:
             try:
                 while True:
-                    command_args = await self.resp_decoder.decode(reader)
 
-                    if not command_args:
+                    command_args_list = await self.resp_decoder.decode(reader)
+                    if not command_args_list:
                         break
 
-                    response = await self.command_handler.handle_command(
-                        command_args, writer
-                    )
+                    for command_args in command_args_list:
+                        #     await self._asyncio_queue.put(command)
 
-                    if isinstance(response, list):
-                        for resp in response:
-                            writer.write(resp)
+                        # while not self._asyncio_queue.empty():
+                        #     command_args = await self._asyncio_queue.get()
+                        response = await self.command_handler.handle_command(
+                            command_args, writer
+                        )
+                        if response:
+                            # if isinstance(response, list):
+                            #     for resp in response:
+                            #         writer.write(resp)
+                            #         await writer.drain()
+
+                            # else:
+                            writer.write(response)
                             await writer.drain()
-
-                    else:
-                        writer.write(response)
-                        await writer.drain()
 
             except asyncio.TimeoutError:
                 logger.error(f"Timeout while reading from Peer: {address}")
@@ -99,7 +118,11 @@ class RedisServer:
             logger.error(f"Error: {e}")
         finally:
             # Close the connection
-            self.database.replicas.remove(writer)
-            writer.close()
-            await writer.wait_closed()
-            logger.info(f"Connection Closed from Peer: {address}")
+            if self.database.replicas:
+                self.database.replicas.remove(writer)
+            try:
+                writer.close()
+                await writer.wait_closed()
+            except Exception as e:
+                logger.warning(f"Failed to close writer: {e}")
+                logger.info(f"Connection Closed from Peer: {address}")

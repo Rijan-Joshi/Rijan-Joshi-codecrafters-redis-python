@@ -24,6 +24,7 @@ class SETCommand(Command):
     def __init__(self, args, db: "DataStore", config):
         super().__init__(args)
         self.db = db
+        self.config = config
 
     async def execute(self) -> bytes:
         try:
@@ -42,6 +43,7 @@ class SETCommand(Command):
                     return self.encoder.encode_error("Invalid PX value")
 
             self.db.set(key, value, expiry)
+
             return self.encoder.encode_simple_string("OK")
         finally:
             # Propagating as a background process

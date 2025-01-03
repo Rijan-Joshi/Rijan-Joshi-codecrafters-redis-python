@@ -42,7 +42,6 @@ class CommandHandler:
 
         print("Arguments", args)
         command_class = self.commands.get(command_name)
-        print("Command Class", command_class)
 
         if not command_class:
             logging.error(f"Command not found: {command_name}")
