@@ -5,18 +5,17 @@ from app.utils.config import RedisServerConfig
 from app.protocol.resp_encoder import RESPEncoder
 from app.protocol.resp_decoder import RESPDecoder
 from app.commands.command import CommandHandler
-from app.server import RedisServer
 from app.database import DataStore
 
 logger = logging.getLogger(__name__)
 
 
 class RedisReplica:
-    def __init__(self, config: RedisServerConfig):
+    def __init__(self, config: RedisServerConfig, db: DataStore):
         self.config = config
         self.encoder = RESPEncoder()
         self.decoder = RESPDecoder()
-        self.db = DataStore(self.config)
+        self.db = DataStore(self.config) if db is None else db
         self.command_handler = CommandHandler(self.db, config)
         self.command_queue = asyncio.Queue()
         self.reader = None
@@ -68,8 +67,8 @@ class RedisReplica:
 
             print("Completed handshake")
 
-            server = RedisServer(self.config, self.db)
-            self.server_task = asyncio.create_task(server.start())
+            # server = RedisServer(self.config, self.db)
+            # self.server_task = asyncio.create_task(server.start())
 
             while True:
                 try:

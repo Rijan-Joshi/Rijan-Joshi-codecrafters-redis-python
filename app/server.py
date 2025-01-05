@@ -8,6 +8,7 @@ from app.protocol.RDBLoader import RDBLoader
 from app.protocol.resp_decoder import RESPDecoder
 from app.utils.config import RedisServerConfig
 from app.protocol.resp_encoder import RESPEncoder
+from app.replication.replica import RedisReplica
 
 """Redis Server"""
 # Database
@@ -40,6 +41,10 @@ class RedisServer:
                 logger.info(f"RDB Load Successful from {self.config.rdb_path}")
             except Exception as e:
                 logger.error(f"Failed to load RDB file: {e}")
+
+        if self.config.replicaof:
+            replica = RedisReplica(self.config, self.database)
+            asyncio.create_task(replica.handle_replication())
 
         # Starting the server and listening for incoming connections
         self.server = await asyncio.start_server(
