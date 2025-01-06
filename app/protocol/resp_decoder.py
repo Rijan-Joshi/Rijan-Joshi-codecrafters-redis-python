@@ -17,11 +17,12 @@ class RESPDecoder:
             args_list = []
             while True:
                 data = await reader.read(4096)
+
+                if not data:
+                    break
                 print("Received data", data)
 
                 print("Data", data.decode())
-                if not data:
-                    break
 
                 self.buffer += data
 

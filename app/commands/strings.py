@@ -43,7 +43,8 @@ class SETCommand(Command):
                     return self.encoder.encode_error("Invalid PX value")
 
             self.db.set(key, value, expiry)
-
+            if self.config.replicaof:
+                return
             return self.encoder.encode_simple_string("OK")
         finally:
             # Propagating as a background process

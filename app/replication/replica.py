@@ -66,13 +66,10 @@ class RedisReplica:
             await self.send_handshake(["PSYNC", "?", "-1"])
 
             print("Completed handshake")
-
-            # server = RedisServer(self.config, self.db)
-            # self.server_task = asyncio.create_task(server.start())
-
             while True:
                 try:
                     command_args_list = await self.decoder.decode(self.reader)
+                    print(command_args_list)
                     if not command_args_list:
                         break
                     for command_args in command_args_list:
