@@ -70,4 +70,5 @@ class WAITCommand(Command):
         self.db = db
 
     async def execute(self):
-        return self.encoder.encode_integer(0)
+        count = len(self.db.replicas)
+        return self.encoder.encode_integer(count)
