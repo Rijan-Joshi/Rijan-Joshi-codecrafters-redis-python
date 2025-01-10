@@ -6,7 +6,6 @@ import time
 import logging
 from typing import Dict, Tuple, Optional
 from app.utils.config import RedisServerConfig
-import asyncio
 from app.protocol.resp_encoder import RESPEncoder
 
 logger = logging.getLogger(__name__)

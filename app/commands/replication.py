@@ -6,9 +6,14 @@ from app.database import DataStore
 
 class REPLCONFCommand(Command):
     def __init__(
-        self, args, db, config: "RedisServerConfig", writer: asyncio.StreamWriter = None
+        self,
+        args,
+        db: DataStore,
+        config: "RedisServerConfig",
+        writer: asyncio.StreamWriter = None,
     ):
         super().__init__(args)
+        self.db = db
         self.config = config
         self.writer = writer
 
@@ -17,7 +22,15 @@ class REPLCONFCommand(Command):
 
         if len(self.args) > 2 and self.args[1].upper() == "GETACK":
             if self.args[2] == "*":
-                self.writer.write(self.encoder.encode_array(["REPLCONF", "ACK", "0"]))
+                self.writer.write(
+                    self.encoder.encode_array(
+                        [
+                            "REPLCONF",
+                            "ACK",
+                            str(self.db._replication_data["master_repl_offset"]),
+                        ]
+                    )
+                )
                 await self.writer.drain()
         return self.encoder.encode_simple_string("OK")
 

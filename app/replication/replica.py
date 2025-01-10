@@ -21,8 +21,6 @@ class RedisReplica:
         self.reader: Optional[asyncio.StreamReader] = None
         self.writer: Optional[asyncio.StreamWriter] = None
         self.server_task = None
-        self.replication_id: Optional[str] = None
-        self.offset: int = -1
 
     async def handle_replication(self):
         """Main replication loop"""
@@ -98,6 +96,13 @@ class RedisReplica:
                 for command in commands:
                     await self._process_command(command)
 
+                    # Keep track of the number of bytes of commmand processed
+                    total = len(self.encoder.encode_array(command))
+                    self.db._replication_data["master_repl_offset"] += total
+                    logger.info(
+                        f"After counting, the offset is {self.db._replication_data["master_repl_offset"]}"
+                    )
+
         except Exception as e:
             logger.error(f"Error while handling master stream: {e}")
             raise
@@ -117,8 +122,12 @@ class RedisReplica:
         try:
             if b"FULLRESYNC" in response:
                 replica_parts = response.split()
-                self.replication_id = replica_parts[1].decode()
-                self.offset = int(replica_parts[2].decode())
+
+                # Updating the replication infos whenever we get the response
+                self.db._replication_data["master_replid"] = replica_parts[1].decode()
+                self.db._replication_data["master_repl_offset"] = int(
+                    replica_parts[2].decode()
+                )
 
                 # Get the size of RDB
                 size_data = await self.reader.readline()
@@ -129,6 +138,7 @@ class RedisReplica:
                 # Extract the size of rdb_file
                 rdb_size = int(size_data[1:-2])
 
+                # Extract the content of the rdb_file
                 rdb_content = await self.reader.read(rdb_size)
                 logger.info(f"The RDB content for the replica is {rdb_content}")
             else:
