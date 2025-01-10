@@ -42,6 +42,7 @@ class RedisServer:
             except Exception as e:
                 logger.error(f"Failed to load RDB file: {e}")
 
+        # If it's a replica, open connection to the master for various purposes like handshakes, and more
         if self.config.replicaof:
             replica = RedisReplica(self.config, self.database)
             asyncio.create_task(replica.handle_replication())

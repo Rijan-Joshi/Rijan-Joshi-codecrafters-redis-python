@@ -5,16 +5,20 @@ from app.database import DataStore
 
 
 class REPLCONFCommand(Command):
-    def __init__(self, args, db, config: "RedisServerConfig"):
+    def __init__(
+        self, args, db, config: "RedisServerConfig", writer: asyncio.StreamWriter = None
+    ):
         super().__init__(args)
         self.config = config
+        self.writer = writer
 
     async def execute(self):
         print("Okay, I am here.")
 
         if len(self.args) > 2 and self.args[1].upper() == "GETACK":
-            if self.args[2].upper() == "*":
-                return self.encoder.encode_array(["REPLCONF", "ACK", "0"])
+            if self.args[2] == "*":
+                self.writer.write(self.encoder.encode_array(["REPLCONF", "ACK", "0"]))
+                await self.writer.drain()
         return self.encoder.encode_simple_string("OK")
 
 
