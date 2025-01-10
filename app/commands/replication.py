@@ -61,3 +61,13 @@ class PSYNCCommand(Command):
         self.db.replicas.add(self.writer)
 
         return None
+
+
+class WAITCommand(Command):
+    def __init__(self, args, db: DataStore, config, writer=None):
+        super().__init__(args)
+        self.config = config
+        self.db = db
+
+    async def execute(self):
+        return self.encoder.encode_integer(0)

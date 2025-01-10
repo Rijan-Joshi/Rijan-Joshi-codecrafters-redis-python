@@ -1,6 +1,6 @@
 """RESP Encoder"""
 
-from typing import Optional, List
+from typing import List
 
 
 class RESPEncoder:
@@ -26,4 +26,10 @@ class RESPEncoder:
         response = f"*{len(items)}\r\n"
         for item in items:
             response += f"${len(item)}\r\n{item}\r\n"
+        return response.encode()
+
+    @staticmethod
+    def encode_integer(number: int) -> bytes:
+        response = f":{number}\r\n"
+
         return response.encode()
