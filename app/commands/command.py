@@ -48,7 +48,7 @@ class CommandHandler:
             logging.error(f"Command not found: {command_name}")
             return self.encoder.encode_error(f"Command not found: {command_name}")
 
-        if command_name in ["PSYNC", "REPLCONF"]:
+        if command_name in ["PSYNC", "REPLCONF", "WAIT"]:
             command = command_class(args, self.db, self.config, writer)
         else:
             command = command_class(args, self.db, self.config)

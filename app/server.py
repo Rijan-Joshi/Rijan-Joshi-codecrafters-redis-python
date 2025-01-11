@@ -99,21 +99,18 @@ class RedisServer:
                         break
 
                     for command_args in command_args_list:
-                        #     await self._asyncio_queue.put(command)
-
-                        # while not self._asyncio_queue.empty():
-                        #     command_args = await self._asyncio_queue.get()
-                        response = await self.command_handler.handle_command(
-                            command_args, writer
-                        )
-                        if response:
-                            # if isinstance(response, list):
-                            #     for resp in response:
-                            #         writer.write(resp)
-                            #         await writer.drain()
-
-                            # else:
-                            writer.write(response)
+                        try:
+                            response = await self.command_handler.handle_command(
+                                command_args, writer
+                            )
+                            if response:
+                                logger.debug(f"Writing response: {response!r}")
+                                writer.write(response)
+                                await writer.drain()
+                        except Exception as e:
+                            logger.error(f"Error handling command {command_args}: {e}")
+                            error_response = self.encoder.encode_error(str(e))
+                            writer.write(error_response)
                             await writer.drain()
 
             except asyncio.TimeoutError:
@@ -124,8 +121,9 @@ class RedisServer:
             logger.error(f"Error: {e}")
         finally:
             # Close the connection
-            if self.database.replicas:
+            if writer in self.database.replicas:
                 self.database.replicas.remove(writer)
+
             try:
                 writer.close()
                 await writer.wait_closed()

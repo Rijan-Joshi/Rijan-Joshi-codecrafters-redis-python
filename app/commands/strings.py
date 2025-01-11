@@ -45,23 +45,39 @@ class SETCommand(Command):
             self.db.set(key, value, expiry)
             if self.config.replicaof:
                 return
+
+            for replica in self.db.replicas:
+                try:
+                    logger.info("Propagating to replica....")
+                    replica.write(self.encoder.encode_array(self.args))
+                    await replica.drain()
+                except Exception as e:
+                    logger.error(f"Error propagating to replica: {e}")
+
             return self.encoder.encode_simple_string("OK")
-        finally:
-            # Propagating as a background process
-            asyncio.create_task(self._propagate_to_replicas())
-
-    async def _propagate_to_replicas(self):
-        tasks = [self._propagate_to_replica(replica) for replica in self.db.replicas]
-        try:
-            await asyncio.gather(*tasks)
         except Exception as e:
-            logger.error("Error propagating")
-            raise
+            logger.error(f"Got Error: {e}")
+        # finally:
+        #     # Propagating as a background process
+        #     await self._propagate_to_replicas()
 
-    async def _propagate_to_replica(self, replica):
-        logger.info("Propagating to replica....")
-        replica.write(self.encoder.encode_array(self.args))
-        await replica.drain()
+    # async def _propagate_to_replicas(self):
+    #     tasks = [self._propagate_to_replica(replica) for replica in self.db.replicas]
+    #     try:
+    #         await asyncio.gather(*tasks)
+    #     except Exception as e:
+    #         logger.error("Error propagating")
+    #         raise
+
+    # async def _propagate_to_replica(self, replica):
+    #     try:
+    #         logger.info("Propagating to replica....")
+    #         replica.write(self.encoder.encode_array(self.args))
+    #         await replica.drain()
+
+    #     except Exception as e:
+    #         logger.error(f"Error propagating to replica: {e}")
+    #         raise
 
 
 class KEYSCommand(Command):
