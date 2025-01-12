@@ -38,9 +38,7 @@ class REPLCONFCommand(Command):
                 await self.writer.drain()
         elif len(self.args) > 2 and self.args[1].upper() == "ACK":
             print("Have I entered here?")
-            self.db.ack_replicas.add(self.writer)
-            print(len(self.db.ack_replicas))
-
+            self.db.ack_replicas[id(self.writer)] = "acknowledged"
         else:
             return self.encoder.encode_simple_string("OK")
 
@@ -69,6 +67,7 @@ class PSYNCCommand(Command):
         await self.writer.drain()
 
         self.db.replicas.add(self.writer)
+        self.db.ack_replicas[id(self.writer)] = None
 
         return None
 
@@ -91,27 +90,33 @@ class WAITCommand(Command):
 
         num_replicas = int(self.args[1])
         timeout = int(self.args[2])
-        acknowledged_replicas = 0
 
         start_time = time.time()
 
         while (time.time() - start_time) * 1000 < timeout:
-            self.db.ack_replicas.clear()
-            for replica in self.db.replicas:
-                try:
-                    ack_cmd = self.encoder.encode_array(["REPLCONF", "GETACK", "*"])
-                    replica.write(ack_cmd)
-                    await replica.drain()
-                    print("ACK Replicas are", len(self.db.ack_replicas))
-                    acknowledged_replicas = len(self.db.ack_replicas)
-                    if acknowledged_replicas >= num_replicas:
-                        break
+            replicas = list(self.db.replicas)
+            async with self.db.lock:
+                for replica in replicas:
+                    try:
+                        print(self.db.ack_replicas)
+                        if self.db.ack_replicas[id(replica)] is None:
+                            ack_cmd = self.encoder.encode_array(
+                                ["REPLCONF", "GETACK", "*"]
+                            )
+                            replica.write(ack_cmd)
+                            await replica.drain()
+                    except Exception as e:
+                        logger.error(f"Failed to get ACK from replica with error: {e}")
 
-                except Exception as e:
-                    logger.error(f"Failed to get ACK from replica with error: {e}")
+            await asyncio.sleep(0.1)
 
-            if acknowledged_replicas >= num_replicas:
-                break
-            await asyncio.sleep(0.01)
+        result = sum(
+            1
+            for replica in self.db.ack_replicas.keys()
+            if self.db.ack_replicas[replica] == "acknowledged"
+        )
+        print("The result is ", result)
 
-        return self.encoder.encode_integer(acknowledged_replicas)
+        self.db.ack_replicas = {key: None for key in self.db.ack_replicas.keys()}
+        print("After resetting, ", self.db.ack_replicas)
+        return self.encoder.encode_integer(result)

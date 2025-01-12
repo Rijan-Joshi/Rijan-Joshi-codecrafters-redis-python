@@ -1,5 +1,6 @@
 """Database for my REDIS"""
 
+import asyncio
 import secrets
 import string
 import time
@@ -15,9 +16,10 @@ class DataStore:
     def __init__(self, config: "RedisServerConfig"):
         self.config = config
         self.encoder = RESPEncoder()
+        self.lock = asyncio.Lock()
         self._data: Dict[str, Tuple[str, Optional[int]]] = {}
         self.replicas = set()
-        self.ack_replicas = set()
+        self.ack_replicas = {}
         self._replication_data = {
             "role": "master",
             "master_replid": self._generate_secure_random_string(),

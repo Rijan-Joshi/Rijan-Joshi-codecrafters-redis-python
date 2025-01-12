@@ -1,7 +1,6 @@
 from .base import Command
 from ..database import DataStore
 import time
-import asyncio
 import logging
 
 logger = logging.getLogger(__name__)
@@ -46,7 +45,10 @@ class SETCommand(Command):
             if self.config.replicaof:
                 return
 
-            for replica in self.db.replicas:
+            async with self.db.lock:
+                replicas = list(self.db.replicas)
+
+            for replica in replicas:
                 try:
                     logger.info("Propagating to replica....")
                     replica.write(self.encoder.encode_array(self.args))
