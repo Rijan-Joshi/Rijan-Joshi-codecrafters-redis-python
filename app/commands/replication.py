@@ -80,6 +80,7 @@ class WAITCommand(Command):
         self.config = config
         self.db = db
         self.writer = writer
+        self.sent_acks = set()
         logger.info("WAITCommand initialized with writer: %s", writer is not None)
 
     async def execute(self):
@@ -95,29 +96,48 @@ class WAITCommand(Command):
         for key in self.db.ack_replicas:
             self.db.ack_replicas[key] = None
 
-        while (time.time() - start_time) * 1000 < timeout:
-            replicas = list(self.db.replicas)
-            for replica in replicas:
-                try:
-                    print(self.db.ack_replicas)
-                    ack_cmd = self.encoder.encode_array(["REPLCONF", "GETACK", "*"])
-                    replica.write(ack_cmd)
-                    await replica.drain()
-                except Exception as e:
-                    logger.error(f"Failed to get ACK from replica with error: {e}")
-                    if replica in self.db.replicas:
-                        self.db.replicas.remove(replica)
-                    if id(replica) in self.db.ack_replicas:
-                        del self.db.ack_replicas[id(replica)]
+        self.sent_acks.clear()
 
-            ack_count = sum(1 for ack in self.db.ack_replicas if ack == "acknowledged")
-            if ack_count >= num_replicas:
-                return self.encoder.encode_integer(ack_count)
+        if self.db.should_acknowledge:
+            while (time.time() - start_time) * 1000 < timeout:
+                replicas = list(self.db.replicas)
+                for replica in replicas:
+                    replica_id = id(replica)
 
-            await asyncio.sleep(0.1)
+                    if (
+                        replica_id not in self.sent_acks
+                        and self.db.ack_replicas[replica_id] is None
+                        and replica_id in self.db.ack_replicas
+                    ):
+                        try:
+                            print(self.db.ack_replicas)
+                            ack_cmd = self.encoder.encode_array(
+                                ["REPLCONF", "GETACK", "*"]
+                            )
+                            replica.write(ack_cmd)
+                            await replica.drain()
+                            self.sent_acks.add(replica_id)
+                        except Exception as e:
+                            logger.error(
+                                f"Failed to get ACK from replica with error: {e}"
+                            )
+                            if replica in self.db.replicas:
+                                self.db.replicas.remove(replica)
+                            if id(replica) in self.db.ack_replicas:
+                                del self.db.ack_replicas[id(replica)]
 
-        result = sum(
-            1 for ack in self.db.ack_replicas.values() if ack == "acknowledged"
-        )
-        print("The result is ", result)
-        return self.encoder.encode_integer(result)
+                ack_count = sum(
+                    1 for ack in self.db.ack_replicas if ack == "acknowledged"
+                )
+                if ack_count >= num_replicas:
+                    return self.encoder.encode_integer(ack_count)
+
+                await asyncio.sleep(0.1)
+
+            result = sum(
+                1 for ack in self.db.ack_replicas.values() if ack == "acknowledged"
+            )
+            print("The result is ", result)
+            return self.encoder.encode_integer(result)
+
+        return self.encoder.encode_integer(len(self.db.replicas))

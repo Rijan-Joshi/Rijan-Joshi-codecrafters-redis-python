@@ -53,6 +53,8 @@ class SETCommand(Command):
                     logger.info("Propagating to replica....")
                     replica.write(self.encoder.encode_array(self.args))
                     await replica.drain()
+
+                    self.db.should_acknowledge = True
                 except Exception as e:
                     logger.error(f"Error propagating to replica: {e}")
 
