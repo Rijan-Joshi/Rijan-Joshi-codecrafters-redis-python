@@ -90,33 +90,34 @@ class WAITCommand(Command):
 
         num_replicas = int(self.args[1])
         timeout = int(self.args[2])
-
         start_time = time.time()
+
+        for key in self.db.ack_replicas:
+            self.db.ack_replicas[key] = None
 
         while (time.time() - start_time) * 1000 < timeout:
             replicas = list(self.db.replicas)
-            async with self.db.lock:
-                for replica in replicas:
-                    try:
-                        print(self.db.ack_replicas)
-                        if self.db.ack_replicas[id(replica)] is None:
-                            ack_cmd = self.encoder.encode_array(
-                                ["REPLCONF", "GETACK", "*"]
-                            )
-                            replica.write(ack_cmd)
-                            await replica.drain()
-                    except Exception as e:
-                        logger.error(f"Failed to get ACK from replica with error: {e}")
+            for replica in replicas:
+                try:
+                    print(self.db.ack_replicas)
+                    ack_cmd = self.encoder.encode_array(["REPLCONF", "GETACK", "*"])
+                    replica.write(ack_cmd)
+                    await replica.drain()
+                except Exception as e:
+                    logger.error(f"Failed to get ACK from replica with error: {e}")
+                    if replica in self.db.replicas:
+                        self.db.replicas.remove(replica)
+                    if id(replica) in self.db.ack_replicas:
+                        del self.db.ack_replicas[id(replica)]
+
+            ack_count = sum(1 for ack in self.db.ack_replicas if ack == "acknowledged")
+            if ack_count >= num_replicas:
+                return self.encoder.encode_integer(ack_count)
 
             await asyncio.sleep(0.1)
 
         result = sum(
-            1
-            for replica in self.db.ack_replicas.keys()
-            if self.db.ack_replicas[replica] == "acknowledged"
+            1 for ack in self.db.ack_replicas.values() if ack == "acknowledged"
         )
         print("The result is ", result)
-
-        self.db.ack_replicas = {key: None for key in self.db.ack_replicas.keys()}
-        print("After resetting, ", self.db.ack_replicas)
         return self.encoder.encode_integer(result)
