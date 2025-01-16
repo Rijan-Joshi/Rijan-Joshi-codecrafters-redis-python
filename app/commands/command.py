@@ -13,6 +13,7 @@ from .strings import (
     INFOCommand,
     INCRCommand,
     MULTICommand,
+    EXECCommand,
 )
 from .server import ConfigCommand
 from .replication import REPLCONFCommand, PSYNCCommand, WAITCommand
@@ -43,6 +44,7 @@ class CommandHandler:
             "WAIT": WAITCommand,
             "INCR": INCRCommand,
             "MULTI": MULTICommand,
+            "EXEC": EXECCommand,
         }
 
     async def handle_command(self, args, writer=None):
@@ -66,11 +68,15 @@ class CommandHandler:
         elif command_name == "MULTI":
             command = command_class(args, self.db, self.config, self.should_be_queued)
             return await command.execute()
+        elif command_name == "EXEC":
+            command = command = command_class(
+                args, self.db, self.config, self.should_be_queued, self.command_queue
+            )
+            return await command.execute()
         else:
             command = command_class(args, self.db, self.config)
 
         if self.should_be_queued:
             await self.command_queue.put(command.execute)
-            return
-
-        return await command.execute()
+        else:
+            return await command.execute()

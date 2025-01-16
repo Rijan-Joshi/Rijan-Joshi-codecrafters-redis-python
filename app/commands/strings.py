@@ -153,3 +153,24 @@ class MULTICommand(Command):
     async def execute(self):
         self.should_be_queued = True
         return self.encoder.encode_simple_string("OK")
+
+
+class EXECCommand(Command):
+    def __init__(self, args, db: DataStore, config, should_be_queued, queue):
+        super().__init__(args)
+        self.should_be_queued = should_be_queued
+        self.queue = queue
+
+    async def execute(self):
+        if self.should_be_queued == False:
+            return self.encoder.encode_error(f"ERR EXEC without MULTI")
+
+        if self.queue.empty():
+            return self.encoder.encode_error(f"There is nothing in queue to execute")
+
+        while True:
+            if self.queue.empty():
+                return
+            task = await self.queue.get()
+            await task
+            self.queue.task_done()
