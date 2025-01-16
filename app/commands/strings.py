@@ -129,14 +129,17 @@ class INCRCommand(Command):
                 self.db.set(key, value, expiry)
                 return self.encoder.encode_integer(value)
 
-            value = int(self.db.get(key))
+            value = self.db.get(key)
+            print("The value is ", value)
 
-            if isinstance(value, int):
-                result = value + 1
+            try:
+                result = int(value) + 1
                 self.db.set(key, result, expiry)
                 return self.encoder.encode_integer(result)
-            else:
-                raise ValueError(f"Invalid format for increment.")
+            except Exception:
+                return self.encoder.encode_error(
+                    "value is not an integer or out of range"
+                )
 
         except Exception as e:
             logger.error(f"Handling INCRCommand got an error: {e}")
