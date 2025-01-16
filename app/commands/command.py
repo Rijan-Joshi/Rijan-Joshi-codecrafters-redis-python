@@ -1,13 +1,22 @@
 """Command Module"""
 
+import asyncio
 import logging
 from app.database import DataStore
 from app.utils.config import RedisServerConfig
 from .connection import PINGCommand, ECHOCommand
 from app.protocol.resp_encoder import RESPEncoder
-from .strings import GETCommand, SETCommand, KEYSCommand, INFOCommand, INCRCommand
+from .strings import (
+    GETCommand,
+    SETCommand,
+    KEYSCommand,
+    INFOCommand,
+    INCRCommand,
+    MULTICommand,
+)
 from .server import ConfigCommand
 from .replication import REPLCONFCommand, PSYNCCommand, WAITCommand
+from .base import Command
 
 
 class CommandHandler:
@@ -16,6 +25,8 @@ class CommandHandler:
         self.config = config
         self.logger = logging.getLogger(__name__)
         self.encoder = RESPEncoder()
+        self.should_be_queued = False
+        self.command_queue = asyncio.Queue()
         self._setup_commands()
 
     def _setup_commands(self):
@@ -31,6 +42,7 @@ class CommandHandler:
             "PSYNC": PSYNCCommand,
             "WAIT": WAITCommand,
             "INCR": INCRCommand,
+            "MULTI": MULTICommand,
         }
 
     async def handle_command(self, args, writer=None):
@@ -51,6 +63,14 @@ class CommandHandler:
 
         if command_name in ["PSYNC", "REPLCONF", "WAIT"]:
             command = command_class(args, self.db, self.config, writer)
+        elif command_name == "MULTI":
+            command = command_class(args, self.db, self.config, self.should_be_queued)
+            return await command.execute()
         else:
             command = command_class(args, self.db, self.config)
+
+        if self.should_be_queued:
+            await self.command_queue.put(command.execute)
+            return
+
         return await command.execute()

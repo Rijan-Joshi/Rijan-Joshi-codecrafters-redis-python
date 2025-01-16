@@ -143,3 +143,13 @@ class INCRCommand(Command):
 
         except Exception as e:
             logger.error(f"Handling INCRCommand got an error: {e}")
+
+
+class MULTICommand(Command):
+    def __init__(self, args, db: DataStore, config, should_be_queued):
+        super().__init__(args)
+        self.should_be_queued = should_be_queued
+
+    async def execute(self):
+        self.should_be_queued = True
+        return self.encoder.encode_simple_string("OK")

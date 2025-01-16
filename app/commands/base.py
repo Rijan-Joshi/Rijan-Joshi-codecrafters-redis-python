@@ -1,5 +1,6 @@
 """Setup Command Base Class"""
 
+import asyncio
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from app.protocol.resp_encoder import RESPEncoder
