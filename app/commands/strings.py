@@ -125,8 +125,9 @@ class INCRCommand(Command):
             expiry = None
 
             if not self.db.get(key):
-                self.db.set(key, 1, expiry)
-                return self.encoder.encode_integer(1)
+                value = 1
+                self.db.set(key, value, expiry)
+                return self.encoder.encode_integer(value)
 
             value = int(self.db.get(key))
 

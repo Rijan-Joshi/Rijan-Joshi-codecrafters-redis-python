@@ -16,6 +16,7 @@ class RESPEncoder:
     def encode_bulk_string(s: str) -> bytes:
         if s is None:
             return b"$-1\r\n"
+        s = str(s)
         return f"${len(s)}\r\n{s}\r\n".encode()
 
     @staticmethod
