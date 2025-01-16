@@ -146,12 +146,10 @@ class INCRCommand(Command):
 
 
 class MULTICommand(Command):
-    def __init__(self, args, db: DataStore, config, should_be_queued):
+    def __init__(self, args, db: DataStore, config):
         super().__init__(args)
-        self.should_be_queued = should_be_queued
 
     async def execute(self):
-        self.should_be_queued = True
         return self.encoder.encode_simple_string("OK")
 
 
@@ -162,11 +160,12 @@ class EXECCommand(Command):
         self.queue = queue
 
     async def execute(self):
+        print(self.should_be_queued, "Should it be queued?")
         if self.should_be_queued == False:
             return self.encoder.encode_error(f"EXEC without MULTI")
 
         if self.queue.empty():
-            return self.encoder.encode_error(f"There is nothing in queue to execute")
+            return self.encoder.encode_array(None)
 
         while True:
             if self.queue.empty():

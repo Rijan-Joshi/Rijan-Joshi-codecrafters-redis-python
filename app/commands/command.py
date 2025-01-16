@@ -66,12 +66,14 @@ class CommandHandler:
         if command_name in ["PSYNC", "REPLCONF", "WAIT"]:
             command = command_class(args, self.db, self.config, writer)
         elif command_name == "MULTI":
-            command = command_class(args, self.db, self.config, self.should_be_queued)
+            self.should_be_queued = True
+            command = command_class(args, self.db, self.config)
             return await command.execute()
         elif command_name == "EXEC":
-            command = command = command_class(
+            command = command_class(
                 args, self.db, self.config, self.should_be_queued, self.command_queue
             )
+            self.should_be_queued = False
             return await command.execute()
         else:
             command = command_class(args, self.db, self.config)
