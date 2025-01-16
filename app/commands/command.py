@@ -5,7 +5,7 @@ from app.database import DataStore
 from app.utils.config import RedisServerConfig
 from .connection import PINGCommand, ECHOCommand
 from app.protocol.resp_encoder import RESPEncoder
-from .strings import GETCommand, SETCommand, KEYSCommand, INFOCommand
+from .strings import GETCommand, SETCommand, KEYSCommand, INFOCommand, INCRCommand
 from .server import ConfigCommand
 from .replication import REPLCONFCommand, PSYNCCommand, WAITCommand
 
@@ -30,6 +30,7 @@ class CommandHandler:
             "REPLCONF": REPLCONFCommand,
             "PSYNC": PSYNCCommand,
             "WAIT": WAITCommand,
+            "INCR": INCRCommand,
         }
 
     async def handle_command(self, args, writer=None):

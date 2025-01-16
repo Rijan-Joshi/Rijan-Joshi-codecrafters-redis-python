@@ -109,3 +109,26 @@ class INFOCommand(Command):
             self.encoder.encode_error("INFO requires an argument")
         else:
             return self.encoder.encode_bulk_string(self.db.info())
+
+
+class INCRCommand(Command):
+    def __init__(self, args, db: DataStore, config):
+        super().__init__(args)
+        self.db = db
+
+    async def execute(self):
+        if len(self.args) < 2:
+            raise ValueError(f"INCRCommand requires at least one argument: key.")
+
+        try:
+            key = self.args[1]
+            value = int(self.db.get(key))
+
+            if isinstance(value, int):
+                result = value + 1
+                return self.encoder.encode_integer(result)
+            else:
+                raise ValueError(f"Invalid format for increment.")
+
+        except Exception as e:
+            logger.error(f"Handling INCRCommand got an error: {e}")
