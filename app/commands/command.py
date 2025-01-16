@@ -28,6 +28,7 @@ class CommandHandler:
         self.encoder = RESPEncoder()
         self.should_be_queued = False
         self.command_queue = asyncio.Queue()
+        self.write_commmands = ["SET", "INCR"]
         self._setup_commands()
 
     def _setup_commands(self):
@@ -63,6 +64,14 @@ class CommandHandler:
             logging.error(f"Command not found: {command_name}")
             return self.encoder.encode_error(f"Command not found: {command_name}")
 
+        # Handle write commands on the basis of whether they should be queued or not
+        if command_name in self.write_commmands:
+            command = command_class(args, self.db, self.config)
+            if self.should_be_queued:
+                await self.command_queue.put(command.execute)
+                return self.encoder.encode_simple_string("QUEUED")
+
+        # Handle all the commands
         if command_name in ["PSYNC", "REPLCONF", "WAIT"]:
             command = command_class(args, self.db, self.config, writer)
         elif command_name == "MULTI":
@@ -78,7 +87,4 @@ class CommandHandler:
         else:
             command = command_class(args, self.db, self.config)
 
-        if self.should_be_queued:
-            await self.command_queue.put(command.execute)
-        else:
-            return await command.execute()
+        return await command.execute()
