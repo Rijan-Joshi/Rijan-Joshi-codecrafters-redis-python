@@ -163,7 +163,7 @@ class EXECCommand(Command):
 
     async def execute(self):
         if self.should_be_queued == False:
-            return self.encoder.encode_error(f"ERR EXEC without MULTI")
+            return self.encoder.encode_error(f"EXEC without MULTI")
 
         if self.queue.empty():
             return self.encoder.encode_error(f"There is nothing in queue to execute")
