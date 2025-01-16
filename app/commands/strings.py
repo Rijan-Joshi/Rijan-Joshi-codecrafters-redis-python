@@ -122,10 +122,17 @@ class INCRCommand(Command):
 
         try:
             key = self.args[1]
+            expiry = None
+
+            if not self.db.get(key):
+                self.db.set(key, 1, expiry)
+                return self.encoder.encode_integer(1)
+
             value = int(self.db.get(key))
 
             if isinstance(value, int):
                 result = value + 1
+                self.db.set(key, result, expiry)
                 return self.encoder.encode_integer(result)
             else:
                 raise ValueError(f"Invalid format for increment.")
