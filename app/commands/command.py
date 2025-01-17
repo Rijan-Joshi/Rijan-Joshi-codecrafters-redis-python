@@ -1,6 +1,5 @@
 """Command Module"""
 
-import asyncio
 import logging
 from app.database import DataStore
 from app.utils.config import RedisServerConfig
@@ -14,6 +13,7 @@ from .strings import (
     INCRCommand,
     MULTICommand,
     EXECCommand,
+    DISCARDCommand,
 )
 from .server import ConfigCommand
 from .replication import REPLCONFCommand, PSYNCCommand, WAITCommand
@@ -42,6 +42,7 @@ class CommandHandler:
             "INCR": INCRCommand,
             "MULTI": MULTICommand,
             "EXEC": EXECCommand,
+            "DISCARD": DISCARDCommand,
         }
 
     async def handle_command(self, args, command_state, writer=None):
@@ -68,14 +69,13 @@ class CommandHandler:
             return await command.execute()
 
         # Handle EXEC Command
-        if command_name == "EXEC":
+        if command_name in ("EXEC", "DISCARD"):
             command = command_class(
                 args,
                 self.db,
                 self.config,
                 command_state.should_be_queued,
                 command_state.command_queue,
-                writer,
             )
             command_state.should_be_queued = False
             return await command.execute()

@@ -1,3 +1,4 @@
+import asyncio
 from .base import Command
 from ..database import DataStore
 import time
@@ -98,7 +99,6 @@ class KEYSCommand(Command):
             return self.encoder.encode_array(self.db.keys())
 
 
-# Command Support for REDIS Replication Feature
 class INFOCommand(Command):
     def __init__(self, args, db: "DataStore", config):
         super().__init__(args)
@@ -154,14 +154,12 @@ class MULTICommand(Command):
 
 
 class EXECCommand(Command):
-    def __init__(self, args, db: DataStore, config, should_be_queued, queue, writer):
+    def __init__(self, args, db: DataStore, config, should_be_queued, queue):
         super().__init__(args)
         self.should_be_queued = should_be_queued
         self.queue = queue
-        self.writer = writer
 
     async def execute(self):
-        print(self.should_be_queued, "Should it be queued?")
         if self.should_be_queued == False:
             return self.encoder.encode_error(f"EXEC without MULTI")
 
@@ -179,3 +177,23 @@ class EXECCommand(Command):
 
         print(self.encoder.encode_array(responses), "Final Result")
         return self.encoder.encode_array(responses)
+
+
+class DISCARDCommand(Command):
+    def __init__(self, args, config, db, should_be_queued, queue):
+        super().__init__(args)
+        self.should_be_queued = should_be_queued
+        self.queue = queue
+
+    async def execute(self):
+
+        if not self.should_be_queued:
+            return self.encoder.encode_error(f"DISCARD without MULTI")
+
+        while not self.queue.empty():
+            try:
+                self.queue.get_nowait()
+            except asyncio.QueueEmpty:
+                break
+
+        return self.encoder.encode_simple_string("OK")
