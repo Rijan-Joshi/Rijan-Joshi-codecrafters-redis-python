@@ -197,3 +197,22 @@ class DISCARDCommand(Command):
                 break
 
         return self.encoder.encode_simple_string("OK")
+
+
+class TYPECommand(Command):
+    def __init__(self, args, db: DataStore, config):
+        super().__init__(args)
+        self.db = db
+
+    async def execute(self):
+        if len(self.args) < 2:
+            raise ValueError(f"TYPECommand requires at least one argument: some_key")
+
+        key = self.args[1]
+        value = self.db.get(key)
+
+        if value is None:
+            return self.encoder.encode_simple_string("none")
+
+        if isinstance(value, str):
+            return self.encoder.encode_simple_string("string")

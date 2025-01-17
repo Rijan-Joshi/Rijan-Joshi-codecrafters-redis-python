@@ -14,6 +14,7 @@ from .strings import (
     MULTICommand,
     EXECCommand,
     DISCARDCommand,
+    TYPECommand,
 )
 from .server import ConfigCommand
 from .replication import REPLCONFCommand, PSYNCCommand, WAITCommand
@@ -43,6 +44,7 @@ class CommandHandler:
             "MULTI": MULTICommand,
             "EXEC": EXECCommand,
             "DISCARD": DISCARDCommand,
+            "TYPE": TYPECommand,
         }
 
     async def handle_command(self, args, command_state, writer=None):
