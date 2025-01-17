@@ -211,8 +211,40 @@ class TYPECommand(Command):
         key = self.args[1]
         value = self.db.get(key)
 
+        if value == "stream":
+            return self.encoder.encode_simple_string("stream")
+
         if value is None:
             return self.encoder.encode_simple_string("none")
 
         if isinstance(value, str):
             return self.encoder.encode_simple_string("string")
+
+
+"""Adding Data to the stream"""
+
+
+class XADDCommand(Command):
+    def __init__(self, args, db: DataStore, config):
+        super().__init__(args)
+        self.db = db
+
+    async def execute(self):
+        key = self.args[1]
+        id = self.args[2]
+
+        data = {id: id}
+
+        if len(self.args) > 3:
+            content = self.args[3:]
+        else:
+            content = []
+
+        for i in range(0, len(content), 2):
+            data[content[i]] = content[i + 1]
+
+        logger.info(f"The content of the stream is {{key:data}}")
+
+        self.db._streams[key] = data
+
+        return self.encoder.encode_bulk_string(id)
