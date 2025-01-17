@@ -6,6 +6,7 @@ from app.protocol.resp_encoder import RESPEncoder
 from app.protocol.resp_decoder import RESPDecoder
 from app.commands.command import CommandHandler
 from app.database import DataStore
+from app.commands.command_state import CommandState
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -87,6 +88,7 @@ class RedisReplica:
 
     async def _handle_master_stream(self):
         """Process the command stream from master"""
+        command_state = CommandState()
         try:
             while True:
                 commands = await self.decoder.decode(self.reader)
@@ -94,7 +96,7 @@ class RedisReplica:
                     raise Exception(f"Error decoding")
 
                 for command in commands:
-                    await self._process_command(command)
+                    await self._process_command(command, command_state)
 
                     # Keep track of the number of bytes of commmand processed
                     total = len(self.encoder.encode_array(command))
@@ -147,10 +149,12 @@ class RedisReplica:
         except Exception as e:
             logger.error(f"Handling PSYNC emerged with error: {e}")
 
-    async def _process_command(self, command):
+    async def _process_command(self, command, command_state):
         """Handle the command using command_handler"""
         try:
-            response = await self.command_handler.handle_command(command, self.writer)
+            response = await self.command_handler.handle_command(
+                command, command_state, self.writer
+            )
             if response and b"ERR" in response:
                 logger.error(f"Error while processing the response: {response}")
         except Exception as e:

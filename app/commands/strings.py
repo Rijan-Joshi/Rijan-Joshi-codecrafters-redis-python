@@ -154,10 +154,11 @@ class MULTICommand(Command):
 
 
 class EXECCommand(Command):
-    def __init__(self, args, db: DataStore, config, should_be_queued, queue):
+    def __init__(self, args, db: DataStore, config, should_be_queued, queue, writer):
         super().__init__(args)
         self.should_be_queued = should_be_queued
         self.queue = queue
+        self.writer = writer
 
     async def execute(self):
         print(self.should_be_queued, "Should it be queued?")
@@ -167,9 +168,14 @@ class EXECCommand(Command):
         if self.queue.empty():
             return self.encoder.encode_array(None)
 
+        responses = []
         while True:
             if self.queue.empty():
-                return
+                break
             task = await self.queue.get()
-            await task
+            response = await task
+            responses.append(response)
             self.queue.task_done()
+
+        print(self.encoder.encode_array(responses), "Final Result")
+        return self.encoder.encode_array(responses)

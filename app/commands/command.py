@@ -17,7 +17,6 @@ from .strings import (
 )
 from .server import ConfigCommand
 from .replication import REPLCONFCommand, PSYNCCommand, WAITCommand
-from .base import Command
 
 
 class CommandHandler:
@@ -26,9 +25,6 @@ class CommandHandler:
         self.config = config
         self.logger = logging.getLogger(__name__)
         self.encoder = RESPEncoder()
-        self.should_be_queued = False
-        self.command_queue = asyncio.Queue()
-        self.write_commmands = ["SET", "INCR"]
         self._setup_commands()
 
     def _setup_commands(self):
@@ -48,7 +44,7 @@ class CommandHandler:
             "EXEC": EXECCommand,
         }
 
-    async def handle_command(self, args, writer=None):
+    async def handle_command(self, args, command_state, writer=None):
 
         command_name = args[0].upper()
 
@@ -60,31 +56,45 @@ class CommandHandler:
         print("Arguments", args)
         command_class = self.commands.get(command_name)
 
+        # Handle Error if command is not found
         if not command_class:
             logging.error(f"Command not found: {command_name}")
             return self.encoder.encode_error(f"Command not found: {command_name}")
 
-        # Handle write commands on the basis of whether they should be queued or not
-        if command_name in self.write_commmands:
+        # Handle MULTI Command
+        if command_name == "MULTI":
+            command_state.should_be_queued = True
             command = command_class(args, self.db, self.config)
-            if self.should_be_queued:
-                await self.command_queue.put(command.execute)
-                return self.encoder.encode_simple_string("QUEUED")
+            return await command.execute()
 
-        # Handle all the commands
-        if command_name in ["PSYNC", "REPLCONF", "WAIT"]:
-            command = command_class(args, self.db, self.config, writer)
-        elif command_name == "MULTI":
-            self.should_be_queued = True
-            command = command_class(args, self.db, self.config)
-            return await command.execute()
-        elif command_name == "EXEC":
+        # Handle EXEC Command
+        if command_name == "EXEC":
             command = command_class(
-                args, self.db, self.config, self.should_be_queued, self.command_queue
+                args,
+                self.db,
+                self.config,
+                command_state.should_be_queued,
+                command_state.command_queue,
+                writer,
             )
-            self.should_be_queued = False
+            command_state.should_be_queued = False
             return await command.execute()
+
+        # Handle PSYNC, REPLCONF, WAIT, etc.. command
+        if command_name in ["PSYNC", "REPLCONF", "WAIT"]:
+            command = command_class(
+                args,
+                self.db,
+                self.config,
+                writer,
+            )
+        # Handle all other commands
         else:
             command = command_class(args, self.db, self.config)
 
-        return await command.execute()
+        # Handle the commands if the MULTI command has been sent before
+        if command_state.should_be_queued:
+            await command_state.command_queue.put(command.execute())
+            return self.encoder.encode_simple_string("QUEUED")
+        else:
+            return await command.execute()

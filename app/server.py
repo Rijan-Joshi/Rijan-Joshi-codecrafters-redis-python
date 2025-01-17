@@ -9,6 +9,7 @@ from app.protocol.resp_decoder import RESPDecoder
 from app.utils.config import RedisServerConfig
 from app.protocol.resp_encoder import RESPEncoder
 from app.replication.replica import RedisReplica
+from app.commands.command_state import CommandState
 
 """Redis Server"""
 # Database
@@ -33,7 +34,6 @@ class RedisServer:
         self._asyncio_queue = asyncio.Queue()
 
     async def start(self):
-
         # Load the RDB file if present
         if self.config.rdb_path.exists():
             try:
@@ -90,6 +90,8 @@ class RedisServer:
         address = writer.get_extra_info("peername")
         logger.info(f"New Connection from {address}")
 
+        command_state = CommandState()
+
         try:
             try:
                 while True:
@@ -101,7 +103,7 @@ class RedisServer:
                     for command_args in command_args_list:
                         try:
                             response = await self.command_handler.handle_command(
-                                command_args, writer
+                                command_args, command_state, writer
                             )
                             if response:
                                 logger.debug(f"Writing response: {response!r}")

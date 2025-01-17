@@ -24,10 +24,15 @@ class RESPEncoder:
         print("Items in encode_array", items)
         if not items:
             return b"*0\r\n"
-        response = f"*{len(items)}\r\n"
+        response = f"*{len(items)}\r\n".encode()
         for item in items:
-            response += f"${len(item)}\r\n{item}\r\n"
-        return response.encode()
+            if item is None:
+                response += "$-1\r\n".encode()
+            elif isinstance(item, str):
+                response += f"${len(item)}\r\n{item}\r\n".encode()
+            elif isinstance(item, bytes):
+                response += item
+        return response
 
     @staticmethod
     def encode_integer(number: int) -> bytes:
