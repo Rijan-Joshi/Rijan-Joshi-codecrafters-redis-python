@@ -201,6 +201,8 @@ class DISCARDCommand(Command):
 
 
 class TYPECommand(Command):
+    """Returns the type of value for the key stored in the database"""
+
     def __init__(self, args, db: DataStore, config):
         super().__init__(args)
         self.db = db
@@ -262,3 +264,34 @@ class XADDCommand(Command):
                 return self.encoder.encode_error(str(e))
         except Exception as e:
             raise ValueError(f"Error executing the XADD Command: {e}")
+
+
+class XRANGECommand(Command):
+    def __init__(self, args, db: DataStore, config):
+        super().__init__(args)
+        self.db = db
+
+    def parse_args(self):
+        _, key, *data = self.args
+
+        start = data[0]
+        end = data[1]
+
+        return key, start, end
+
+    async def execute(self):
+        key, start, end = self.parse_args()
+
+        stream = self.db.get(key)
+        if stream is None:
+            return self.encoder.encode_error(f"Key not found in the database")
+        elif not isinstance(stream, StreamData):
+            raise ValueError(
+                f"WRONGTYPE operation with the key having value of data-type other than stream"
+            )
+
+        try:
+            data = stream.execute_xrange(start, end)
+            return data
+        except Exception as e:
+            logger.error(f"Got error while getting XRANGE stream: {e}")

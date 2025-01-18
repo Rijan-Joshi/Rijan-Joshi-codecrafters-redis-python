@@ -16,6 +16,7 @@ from .strings import (
     DISCARDCommand,
     TYPECommand,
     XADDCommand,
+    XRANGECommand,
 )
 from .server import ConfigCommand
 from .replication import REPLCONFCommand, PSYNCCommand, WAITCommand
@@ -47,6 +48,7 @@ class CommandHandler:
             "DISCARD": DISCARDCommand,
             "TYPE": TYPECommand,
             "XADD": XADDCommand,
+            "XRANGE": XRANGECommand,
         }
 
     async def handle_command(self, args, command_state, writer=None):

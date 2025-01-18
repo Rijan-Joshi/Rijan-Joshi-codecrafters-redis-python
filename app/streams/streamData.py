@@ -97,3 +97,52 @@ class StreamData:
             )
 
         return validation
+
+    def execute_xrange(self, start, end):
+        if "-" not in start:
+            start = f"{start}-0"
+
+        contains_hyphen = False
+        if "-" in end:
+            contains_hyphen = True
+
+        entries = []
+        push = False
+        for entry in self.entries:
+
+            if not contains_hyphen:
+                entry_timestamp, _ = entry.id.split("-")[0]
+                if entry_timestamp == end:
+                    continue_pushing = "yes"
+                if continue_pushing and entry_timestamp != end:
+                    continue_pushing = "no"
+                    push = False
+                    break
+
+            if entry.id == start:
+                push = True
+            if push:
+                entries.append([entry.id, entry.fields])
+
+            if contains_hyphen:
+                if entry.id == end:
+                    push = False
+                    break
+
+        response = f"*{len(entries)}\r\n"
+
+        for id, fields in entries:
+            encoded_len = f"*2\r\n"
+            encoded_id = f"${len(id)}\r\n{id}\r\n"
+            encoded_fields_len = f"*{len(fields)}\r\n"
+            res = encoded_len + encoded_id + encoded_fields_len
+
+            for key, value in fields.items():
+                encoded_key = f"${len(key)}\r\n{key}\r\n"
+                encoded_value = f"${len(value)}\r\n{value}\r\n"
+                res += encoded_key + encoded_value
+
+            response += res
+
+        print("response for xrange", response)
+        return response.encode()
