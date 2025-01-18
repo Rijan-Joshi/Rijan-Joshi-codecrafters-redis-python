@@ -98,7 +98,25 @@ class StreamData:
 
         return validation
 
-    def execute_xrange(self, start, end):
+    def _validate_xread_id(self, start, entry_id):
+        start_timestamp, start_sequence = map(int, start.split("-"))
+        id_timestamp, id_sequence = map(int, entry_id.split("-"))
+
+        print(start_timestamp, start_sequence, id_timestamp, id_sequence)
+
+        print("I am here")
+        if start_timestamp < id_timestamp:
+            return True
+
+        if start_timestamp == id_timestamp:
+            if start_sequence < id_sequence:
+                return True
+
+        return False
+
+    def execute_xrange(self, start, end, xread=None):
+
+        print("Start and end", start, end)
         if "-" not in start:
             start = f"{start}-0"
 
@@ -114,6 +132,7 @@ class StreamData:
 
         for entry in self.entries:
 
+            # Deal with xrange if the id doesn't have "-" in it
             if not contains_hyphen and end != "+":
                 entry_timestamp, _ = entry.id.split("-")[0]
                 if entry_timestamp == end:
@@ -123,11 +142,19 @@ class StreamData:
                     push = False
                     break
 
-            if entry.id == start:
-                push = True
+            # Logic for pushing
+
+            if not xread:
+                if entry.id == start:
+                    push = True
+            else:
+                push = self._validate_xread_id(start, entry.id)
+                print("Push", push)
+            # Push each entry to the entries
             if push:
                 entries.append([entry.id, entry.fields])
 
+            # Deal if the id contains "-"
             if contains_hyphen and end != "+":
                 if entry.id == end:
                     push = False
@@ -148,5 +175,5 @@ class StreamData:
 
             response += res
 
-        print("response for xrange", response)
+        print(f"response for xrange: {response}")
         return response.encode()

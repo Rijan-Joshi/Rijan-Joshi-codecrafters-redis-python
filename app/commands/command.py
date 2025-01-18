@@ -17,6 +17,7 @@ from .strings import (
     TYPECommand,
     XADDCommand,
     XRANGECommand,
+    XREADCommand,
 )
 from .server import ConfigCommand
 from .replication import REPLCONFCommand, PSYNCCommand, WAITCommand
@@ -49,6 +50,7 @@ class CommandHandler:
             "TYPE": TYPECommand,
             "XADD": XADDCommand,
             "XRANGE": XRANGECommand,
+            "XREAD": XREADCommand,
         }
 
     async def handle_command(self, args, command_state, writer=None):

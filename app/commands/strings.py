@@ -297,3 +297,51 @@ class XRANGECommand(Command):
             return data
         except Exception as e:
             logger.error(f"Got error while getting XRANGE stream: {e}")
+
+
+class XREADCommand(Command):
+    def __init__(self, args, db: DataStore, config):
+        super().__init__(args)
+        self.db = db
+
+    async def execute(self):
+        """Execute the XREAD Command"""
+        # Get the index from where the keys start
+        stream_index = self.args.index("streams")
+
+        datae = self.args[stream_index + 1 :]
+
+        k = len(datae)
+
+        # Get the list of keys and the corresponding ids
+        keys = datae[: k // 2]
+
+        ids = datae[k // 2 :]
+
+        # Start the encoded
+        response = f"*{len(keys)}\r\n".encode()
+
+        for i in range(len(keys)):
+            key = keys[i]
+            id = ids[i]
+            encoded_key = f"${len(key)}\r\n{key}\r\n".encode()
+            res = f"*2\r\n".encode() + encoded_key
+
+            stream = self.db.get(key)
+            if stream is None:
+                return self.encoder.encode_error(f"Key not found in the database")
+            elif not isinstance(stream, StreamData):
+                raise ValueError(
+                    f"WRONGTYPE operation with the key having value of data-type other than stream"
+                )
+
+            try:
+                xread = True
+                data = stream.execute_xrange(id, "+", xread)
+                res += data
+            except Exception as e:
+                logger.error(f"Got error while getting XREAD stream: {e}")
+                raise
+
+        response += res
+        return response
