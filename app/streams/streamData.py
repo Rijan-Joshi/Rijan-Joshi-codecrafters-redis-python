@@ -114,7 +114,7 @@ class StreamData:
 
         for entry in self.entries:
 
-            if not contains_hyphen:
+            if not contains_hyphen and end != "+":
                 entry_timestamp, _ = entry.id.split("-")[0]
                 if entry_timestamp == end:
                     continue_pushing = "yes"
@@ -128,7 +128,7 @@ class StreamData:
             if push:
                 entries.append([entry.id, entry.fields])
 
-            if contains_hyphen:
+            if contains_hyphen and end != "+":
                 if entry.id == end:
                     push = False
                     break

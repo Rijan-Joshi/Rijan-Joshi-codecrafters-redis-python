@@ -272,6 +272,7 @@ class XRANGECommand(Command):
         self.db = db
 
     def parse_args(self):
+        """Parse XRANGE Arguments"""
         _, key, *data = self.args
 
         start = data[0]
@@ -280,6 +281,7 @@ class XRANGECommand(Command):
         return key, start, end
 
     async def execute(self):
+        """Execute the XRANGE Command"""
         key, start, end = self.parse_args()
 
         stream = self.db.get(key)
