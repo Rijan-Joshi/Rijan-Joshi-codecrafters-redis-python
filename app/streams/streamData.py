@@ -107,7 +107,11 @@ class StreamData:
             contains_hyphen = True
 
         entries = []
+
         push = False
+        if start == "-":
+            push = True
+
         for entry in self.entries:
 
             if not contains_hyphen:
