@@ -18,7 +18,6 @@ class DataStore:
         self.encoder = RESPEncoder()
         self.lock = asyncio.Lock()
         self._data: Dict[str, Tuple[str, Optional[int]]] = {}
-        self._streams = {}
         self.replicas = set()
         self.ack_replicas = {}
         self.should_acknowledge = False
@@ -49,10 +48,7 @@ class DataStore:
     def get(self, key: str) -> Optional[str]:
         """Get value for key if it exists and hasn't expired."""
         if key not in self._data:
-            if key not in self._streams:
-                return None
-            else:
-                return "stream"
+            return None
 
         value, expiry = self._data[key]
         if expiry and time.time() * 1000 > expiry:

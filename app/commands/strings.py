@@ -3,6 +3,7 @@ from .base import Command
 from ..database import DataStore
 import time
 import logging
+from app.streams.streamData import StreamData
 
 logger = logging.getLogger(__name__)
 
@@ -211,40 +212,51 @@ class TYPECommand(Command):
         key = self.args[1]
         value = self.db.get(key)
 
-        if value == "stream":
-            return self.encoder.encode_simple_string("stream")
-
         if value is None:
             return self.encoder.encode_simple_string("none")
 
         if isinstance(value, str):
             return self.encoder.encode_simple_string("string")
 
-
-"""Adding Data to the stream"""
+        if isinstance(value, StreamData):
+            return self.encoder.encode_simple_string("stream")
 
 
 class XADDCommand(Command):
+    """Adding Data to the stream"""
+
     def __init__(self, args, db: DataStore, config):
         super().__init__(args)
         self.db = db
 
+    def parse_entry(self):
+        _, key, entry_id, *data = self.args
+
+        fields = {}
+        for i in range(0, len(data), 2):
+            key_ = data[i]
+            value = data[i + 1]
+            fields[key_] = value
+
+        return key, entry_id, fields
+
     async def execute(self):
-        key = self.args[1]
-        id = self.args[2]
+        try:
+            key, id, fields = self.parse_entry()
 
-        data = {id: id}
+            stream = self.db.get(key)
+            if stream is None:
+                stream = StreamData()
+                self.db.set(key, stream)
+            elif not isinstance(stream, StreamData):
+                return self.encoder.encode_error(
+                    "WRONGTYPE operation with the key holding data type other than stream"
+                )
 
-        if len(self.args) > 3:
-            content = self.args[3:]
-        else:
-            content = []
-
-        for i in range(0, len(content), 2):
-            data[content[i]] = content[i + 1]
-
-        logger.info(f"The content of the stream is {{key:data}}")
-
-        self.db._streams[key] = data
-
-        return self.encoder.encode_bulk_string(id)
+            try:
+                new_entry = stream.add_entry(id, fields)
+                return new_entry
+            except Exception as e:
+                return self.encoder.encode_error(str(e))
+        except Exception as e:
+            raise ValueError(f"Error executing the XADD Command: {e}")

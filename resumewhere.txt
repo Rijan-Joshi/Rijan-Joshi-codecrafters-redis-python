@@ -1,0 +1,2 @@
+#Parsing the stream arguments to implement the XADD Command
+#Validation
