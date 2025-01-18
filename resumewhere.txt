@@ -1,2 +1,4 @@
 #Parsing the stream arguments to implement the XADD Command
 #Validation
+
+#Array for keys > *2\r\n with stream_key and an array > *1\r\n the array> *2\r\n array with id and fields> contents of fields

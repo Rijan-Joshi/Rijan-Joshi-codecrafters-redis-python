@@ -99,12 +99,10 @@ class StreamData:
         return validation
 
     def _validate_xread_id(self, start, entry_id):
+        """Validate the id given in XREAD Command to allow only greater ids"""
         start_timestamp, start_sequence = map(int, start.split("-"))
         id_timestamp, id_sequence = map(int, entry_id.split("-"))
 
-        print(start_timestamp, start_sequence, id_timestamp, id_sequence)
-
-        print("I am here")
         if start_timestamp < id_timestamp:
             return True
 
@@ -150,6 +148,7 @@ class StreamData:
             else:
                 push = self._validate_xread_id(start, entry.id)
                 print("Push", push)
+
             # Push each entry to the entries
             if push:
                 entries.append([entry.id, entry.fields])
