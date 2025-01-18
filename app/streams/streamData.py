@@ -1,5 +1,6 @@
 """Implementing the logic of Stream Database in Redis (Basic not based on Radix Trie)"""
 
+import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 from app.protocol.resp_encoder import RESPEncoder
@@ -25,6 +26,7 @@ class StreamData:
     def _validate(self, id):
         """Validate the entry_id"""
 
+        # Unpack the time and sequence
         time, sequence = id.split("-")
         time = int(time)
         if sequence != "*":
@@ -64,15 +66,19 @@ class StreamData:
             "The ID specified in XADD is equal or smaller than the target stream top item"
         )
 
-    def generate_id(self, id):
+    def _generate_id(self):
         """Generate the entry_id if needed"""
+        current_unix_time_ms = int(time.time()) * 1000
+        sequence = 0
 
-        pass
+        return f"{current_unix_time_ms}-{sequence}"
 
     def add_entry(self, entry_id: Optional[str], fields: Dict[str, str]) -> str:
         """Add a new entry to the stream"""
-        # if entry_id is None or "*" in entry_id:
-        #     entry_id = self._generate_id(entry_id)
+        if entry_id is None or entry_id == "*":
+            entry_id = self._generate_id()
+            if entry_id == f"{self.last_timestamp}-{self.last_sequence}":
+                entry_id = f"{self.last_timestamp}-*"
 
         # Validated the entry id
         validation = self._validate(entry_id)
@@ -86,7 +92,7 @@ class StreamData:
                     f"{self.last_timestamp}-{self.last_sequence}"
                 ),
             )
-            return self.encoder.encode_simple_string(
+            return self.encoder.encode_bulk_string(
                 f"{self.last_timestamp}-{self.last_sequence}"
             )
 
