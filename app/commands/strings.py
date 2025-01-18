@@ -230,6 +230,7 @@ class XADDCommand(Command):
         self.db = db
 
     def parse_entry(self):
+        """Parse XADD arugments"""
         _, key, entry_id, *data = self.args
 
         fields = {}
@@ -241,6 +242,7 @@ class XADDCommand(Command):
         return key, entry_id, fields
 
     async def execute(self):
+        """Add functionality to XADD Command"""
         try:
             key, id, fields = self.parse_entry()
 
