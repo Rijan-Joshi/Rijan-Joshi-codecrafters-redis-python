@@ -32,6 +32,8 @@ class RESPEncoder:
                 response += f"${len(item)}\r\n{item}\r\n".encode()
             elif isinstance(item, bytes):
                 response += item
+            elif isinstance(item, list):
+                response += RESPEncoder.encode_array(item)
         return response
 
     @staticmethod

@@ -267,6 +267,10 @@ class XADDCommand(Command):
 
 
 class XRANGECommand(Command):
+    """
+    XRANGE key start end [COUNT count]
+    """
+
     def __init__(self, args, db: DataStore, config):
         super().__init__(args)
         self.db = db
@@ -284,6 +288,7 @@ class XRANGECommand(Command):
         """Execute the XRANGE Command"""
         key, start, end = self.parse_args()
 
+        # Get Stream
         stream = self.db.get(key)
         if stream is None:
             return self.encoder.encode_error(f"Key not found in the database")
@@ -293,8 +298,9 @@ class XRANGECommand(Command):
             )
 
         try:
-            data = stream.execute_xrange(start, end)
-            return data
+            data = await stream.execute_xrange(start, end)
+            if data:
+                return self.encoder.encode_array(data)
         except Exception as e:
             logger.error(f"Got error while getting XRANGE stream: {e}")
 
@@ -319,13 +325,11 @@ class XREADCommand(Command):
         ids = datae[k // 2 :]
 
         # Start the encoded
-        response = f"*{len(keys)}\r\n".encode()
+        results = []
 
         for i in range(len(keys)):
             key = keys[i]
             id = ids[i]
-            encoded_key = f"${len(key)}\r\n{key}\r\n".encode()
-            res = f"*2\r\n".encode() + encoded_key
 
             stream = self.db.get(key)
             if stream is None:
@@ -337,11 +341,11 @@ class XREADCommand(Command):
 
             try:
                 xread = True
-                data = stream.execute_xrange(id, "+", xread)
-                res += data
+                data = await stream.execute_xrange(id, "+", xread)
+                if data:
+                    results.append([key, data])
             except Exception as e:
                 logger.error(f"Got error while getting XREAD stream: {e}")
                 raise
 
-        response += res
-        return response
+        return self.encoder.encode_array(results)

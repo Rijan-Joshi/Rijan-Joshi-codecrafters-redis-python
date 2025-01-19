@@ -15,7 +15,9 @@ class StreamEntry:
 
 
 class StreamData:
-    """Storing the data for each stream"""
+    """
+    Storing the data for each stream:
+    """
 
     def __init__(self):
         self.entries: List[StreamEntry] = []
@@ -112,7 +114,7 @@ class StreamData:
 
         return False
 
-    def execute_xrange(self, start, end, xread=None):
+    async def execute_xrange(self, start, end, xread=None):
 
         print("Start and end", start, end)
         if "-" not in start:
@@ -159,20 +161,32 @@ class StreamData:
                     push = False
                     break
 
-        response = f"*{len(entries)}\r\n"
+        # response = f"*{len(entries)}\r\n"
 
-        for id, fields in entries:
-            encoded_len = f"*2\r\n"
-            encoded_id = f"${len(id)}\r\n{id}\r\n"
-            encoded_fields_len = f"*{len(fields)}\r\n"
-            res = encoded_len + encoded_id + encoded_fields_len
+        # for id, fields in entries:
+        #     encoded_len = f"*2\r\n"
+        #     encoded_id = f"${len(id)}\r\n{id}\r\n"
+        #     encoded_fields_len = f"*{len(fields)}\r\n"
+        #     res = encoded_len + encoded_id + encoded_fields_len
 
-            for key, value in fields.items():
-                encoded_key = f"${len(key)}\r\n{key}\r\n"
-                encoded_value = f"${len(value)}\r\n{value}\r\n"
-                res += encoded_key + encoded_value
+        #     for key, value in fields.items():
+        #         encoded_key = f"${len(key)}\r\n{key}\r\n"
+        #         encoded_value = f"${len(value)}\r\n{value}\r\n"
+        #         res += encoded_key + encoded_value
 
-            response += res
+        #     response += res
 
-        print(f"response for xrange: {response}")
-        return response.encode()
+        result = []
+
+        for id, field in entries:
+            entry = [id]
+
+            fields = []
+            for key, value in field.items():
+                fields.extend([key, value])
+
+            entry.append(fields)
+
+            result.append(entry)
+
+        return result
