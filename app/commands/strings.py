@@ -325,7 +325,6 @@ class XREADCommand(Command):
             stream = self.db.get(key)
             if stream is None or not isinstance(stream, StreamData):
                 continue
-
             try:
                 data = await stream.execute_xrange(id, "+", True)
                 if data:
@@ -352,7 +351,19 @@ class XREADCommand(Command):
         # Get stream_infos
         keys = datae[: k // 2]
         ids = datae[k // 2 :]
+
+        print(keys, ids)
+
+        if "$" in ids:
+            for i in range(len(keys)):
+                if ids[i] == "$":
+                    stream = self.db.get(keys[i])
+                    if not stream or not isinstance(stream, StreamData):
+                        continue
+                    ids[i] = stream.get_last_id()
+
         stream_infos = list(zip(keys, ids))
+        print("The zipped key-id pair is", stream_infos)
 
         while True:
             # First attempt to read
@@ -372,6 +383,8 @@ class XREADCommand(Command):
             while time.time() - start_time < block / 1000:
                 await asyncio.sleep(0.1)  # Small sleep to prevent CPU hogging
                 results = await self.process_stream(stream_infos)
+                if results:
+                    break
 
             break
 

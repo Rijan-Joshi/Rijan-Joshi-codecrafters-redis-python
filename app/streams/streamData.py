@@ -23,7 +23,12 @@ class StreamData:
         self.entries: List[StreamEntry] = []
         self.last_timestamp = 0
         self.last_sequence = 0
+        self.penultimate_timestamp = 0
+        self.penultimate_sequence = 0
         self.encoder = RESPEncoder()
+
+    def get_last_id(self):
+        return f"{self.last_timestamp}-{self.last_sequence}"
 
     def _validate(self, id):
         """Validate the entry_id"""
@@ -46,6 +51,7 @@ class StreamData:
                 self.last_sequence = 0
             else:
                 self.last_sequence = sequence
+
             self.last_timestamp = time
             return "validated"
 
@@ -56,10 +62,12 @@ class StreamData:
                     self.last_sequence = 1
                     return "validated"
                 else:
+
                     self.last_sequence += 1
                     return "validated"
 
             if self.last_sequence < sequence:
+
                 self.last_sequence = sequence
                 return "validated"
 
@@ -117,7 +125,7 @@ class StreamData:
     async def execute_xrange(self, start, end, xread=None):
 
         print("Start and end", start, end)
-        if "-" not in start:
+        if "-" not in start and start != "$":
             start = f"{start}-0"
 
         contains_hyphen = False
@@ -148,9 +156,8 @@ class StreamData:
                 if entry.id == start:
                     push = True
             else:
-                if start == "$":
-                    start = f"{self.last_timestamp}-{self.last_sequence}"
                 push = self._validate_xread_id(start, entry.id)
+                print("The first push is ", push)
                 print("Push", push)
 
             # Push each entry to the entries
@@ -162,21 +169,6 @@ class StreamData:
                 if entry.id == end:
                     push = False
                     break
-
-        # response = f"*{len(entries)}\r\n"
-
-        # for id, fields in entries:
-        #     encoded_len = f"*2\r\n"
-        #     encoded_id = f"${len(id)}\r\n{id}\r\n"
-        #     encoded_fields_len = f"*{len(fields)}\r\n"
-        #     res = encoded_len + encoded_id + encoded_fields_len
-
-        #     for key, value in fields.items():
-        #         encoded_key = f"${len(key)}\r\n{key}\r\n"
-        #         encoded_value = f"${len(value)}\r\n{value}\r\n"
-        #         res += encoded_key + encoded_value
-
-        #     response += res
 
         result = []
 
