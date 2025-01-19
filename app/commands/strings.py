@@ -354,20 +354,6 @@ class XREADCommand(Command):
         ids = datae[k // 2 :]
         stream_infos = list(zip(keys, ids))
 
-        # region
-        # # Execute the block functionality if it exists
-        # if block is not None:
-        #     try:
-        #         # if block is 0
-        #         if block == 0:
-        #             while not results:
-        #                 results = await self.process_stream(stream_infos)
-        #         else:
-        #             start_time = time.time()
-
-        #     except Exception as e:
-        #         logger.error(f"Error while blocking: {e}")
-        # endregion
         while True:
             # First attempt to read
             results = await self.process_stream(stream_infos)
@@ -378,7 +364,7 @@ class XREADCommand(Command):
 
             # For block = 0, we'll keep waiting indefinitely
             if block == 0:
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.1)  # To prevent CPU hogging
                 continue
 
             # For positive block values, implement timeout

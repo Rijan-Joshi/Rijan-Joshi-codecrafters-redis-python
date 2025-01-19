@@ -148,6 +148,8 @@ class StreamData:
                 if entry.id == start:
                     push = True
             else:
+                if start == "$":
+                    start = f"{self.last_timestamp}-{self.last_sequence}"
                 push = self._validate_xread_id(start, entry.id)
                 print("Push", push)
 
