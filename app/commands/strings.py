@@ -306,46 +306,99 @@ class XRANGECommand(Command):
 
 
 class XREADCommand(Command):
+    """
+    XREAD [COUNT count] [BLOCK milliseconds] STREAMS key [key ...] ID [ID ...]
+    Example: XREAD COUNT 2 STREAMS mystream 0-0
+    """
+
     def __init__(self, args, db: DataStore, config):
         super().__init__(args)
         self.db = db
 
-    async def execute(self):
-        """Execute the XREAD Command"""
-        # Get the index from where the keys start
-        stream_index = self.args.index("streams")
+    async def process_stream(self, stream_infos):
+        """Process the results"""
 
-        datae = self.args[stream_index + 1 :]
+        results = {}
 
-        k = len(datae)
-
-        # Get the list of keys and the corresponding ids
-        keys = datae[: k // 2]
-
-        ids = datae[k // 2 :]
-
-        # Start the encoded
-        results = []
-
-        for i in range(len(keys)):
-            key = keys[i]
-            id = ids[i]
-
+        for key, id in stream_infos:
+            # Get Key
             stream = self.db.get(key)
-            if stream is None:
-                return self.encoder.encode_error(f"Key not found in the database")
-            elif not isinstance(stream, StreamData):
-                raise ValueError(
-                    f"WRONGTYPE operation with the key having value of data-type other than stream"
-                )
+            if stream is None or not isinstance(stream, StreamData):
+                continue
 
             try:
-                xread = True
-                data = await stream.execute_xrange(id, "+", xread)
+                data = await stream.execute_xrange(id, "+", True)
                 if data:
-                    results.append([key, data])
+                    results[key] = data
             except Exception as e:
                 logger.error(f"Got error while getting XREAD stream: {e}")
-                raise
 
-        return self.encoder.encode_array(results)
+        return results
+
+    async def execute(self):
+        """Execute the XREAD Command"""
+
+        block = None
+        # Get block
+        if "block" in self.args:
+            block_index = self.args.index("block")
+            block = int(self.args[block_index + 1])
+
+        # Get the index from where the keys start
+        stream_index = self.args.index("streams")
+        datae = self.args[stream_index + 1 :]
+        k = len(datae)
+
+        # Get stream_infos
+        keys = datae[: k // 2]
+        ids = datae[k // 2 :]
+        stream_infos = list(zip(keys, ids))
+
+        # Get the results once at first
+        results = await self.process_stream(stream_infos)
+
+        # Execute the block functionality if it exists
+        if block is not None:
+            try:
+                start_time = time.time()
+                while time.time() - start_time < block / 1000:
+                    await asyncio.sleep(0.1)  # Small sleep to prevent CPU hogging
+                    results = await self.process_stream(stream_infos)
+            except Exception as e:
+                logger.error(f"Error while blocking: {e}")
+
+        outcome = []
+        if results:
+            for key, entry in results.items():
+                outcome.append([key, entry])
+
+        if not outcome:
+            return self.encoder.encode_bulk_string(None)
+        return self.encoder.encode_array(outcome)
+
+        # Start the encoded
+        # results = []
+
+        # for i in range(len(keys)):
+        #     key = keys[i]
+        #     id = ids[i]
+
+        #     # Get Key
+        #     stream = self.db.get(key)
+        #     if stream is None:
+        #         return self.encoder.encode_error(f"Key not found in the database")
+        #     elif not isinstance(stream, StreamData):
+        #         raise ValueError(
+        #             f"WRONGTYPE operation with the key having value of data-type other than stream"
+        #         )
+
+        #     try:
+        #         xread = True
+        #         data = await stream.execute_xrange(id, "+", xread)
+        #         if data:
+        #             results.append([key, data])
+        #     except Exception as e:
+        #         logger.error(f"Got error while getting XREAD stream: {e}")
+        #         raise
+
+        # return self.encoder.encode_array(results)
